@@ -1,0 +1,351 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 250 20% 98%;
+    --foreground: 240 10% 3.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --primary: 262 58% 55%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 260 67% 75%;
+    --secondary-foreground: 240 5.9% 10%;
+
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+
+    --accent: 286 94% 60%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 262 58% 55%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 262 58% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 262 58% 55%;
+  }
+
+  .dark {
+    --background: 240 10% 5%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 10% 7%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 7%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 262 58% 55%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 260 67% 28%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 3.7% 17%;
+    --muted-foreground: 240 5% 64.9%;
+
+    --accent: 286 94% 40%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 262 58% 45%;
+
+    --sidebar-background: 240 10% 5%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 262 58% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 262 58% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card-gradient backdrop-blur-md border border-white/20 shadow-lg;
+  }
+  
+  .premium-text {
+    @apply bg-clip-text text-transparent bg-premium-gradient font-bold;
+  }
+  
+  .nav-item {
+    @apply flex items-center gap-2 p-2 rounded-md transition-all hover:bg-accent/10;
+  }
+  
+  .nav-item.active {
+    @apply bg-accent/20 text-accent;
+  }
+}
+
+/* FullCalendar Custom Styles */
+:root {
+  --fc-border-color: theme('colors.border');
+  --fc-daygrid-event-dot-width: 8px;
+  --fc-list-event-dot-width: 10px;
+  --fc-event-bg-color: theme('colors.primary.DEFAULT');
+  --fc-event-border-color: theme('colors.primary.DEFAULT');
+  --fc-event-text-color: theme('colors.primary.foreground');
+  --fc-event-selected-overlay-color: theme('colors.primary.DEFAULT / 25%');
+  --fc-more-link-bg-color: theme('colors.muted.DEFAULT');
+  --fc-more-link-text-color: theme('colors.muted.foreground');
+  --fc-event-resizer-thickness: 8px;
+  --fc-event-resizer-dot-size: 8px;
+  --fc-highlight-color: theme('colors.accent.DEFAULT / 25%');
+  --fc-today-bg-color: theme('colors.accent.DEFAULT / 15%');
+  --fc-now-indicator-color: theme('colors.red.500');
+}
+
+/* 다크 모드 스타일 */
+.dark {
+  --fc-border-color: theme('colors.border');
+  --fc-event-bg-color: theme('colors.primary.DEFAULT');
+  --fc-event-border-color: theme('colors.primary.DEFAULT');
+  --fc-event-text-color: theme('colors.primary.foreground');
+  --fc-event-selected-overlay-color: theme('colors.primary.DEFAULT / 25%');
+  --fc-more-link-bg-color: theme('colors.muted.DEFAULT');
+  --fc-more-link-text-color: theme('colors.muted.foreground');
+  --fc-highlight-color: theme('colors.accent.DEFAULT / 25%');
+  --fc-today-bg-color: theme('colors.accent.DEFAULT / 15%');
+  --fc-now-indicator-color: theme('colors.red.400'); /* 다크모드에서 약간 밝게 */
+
+  /* 추가적인 다크모드 전용 스타일 */
+  .fc-daygrid-day-number {
+    color: theme('colors.muted.foreground');
+  }
+  .fc-col-header-cell-cushion /* 요일 헤더 텍스트 */ {
+    color: theme('colors.muted.foreground');
+    color: theme('colors.muted.foreground');
+  }
+  /* 요일 헤더 셀(th) 배경색을 카드 배경색으로 재시도 (더 구체적인 선택자) */
+  .dark .fc-theme-standard .fc-scrollgrid thead th { /* 테이블 헤더 직접 타겟팅 */
+    background-color: hsl(var(--card)) !important;
+    border-color: transparent !important;
+  }
+  /* 내부 링크 배경은 투명 유지 (혹시 모르니) */
+   .dark .fc .fc-col-header-cell > .fc-scrollgrid-sync-inner > a {
+     background-color: transparent !important;
+   }
+  .fc-timegrid-axis-cushion /* 시간 축 텍스트 */ {
+     color: theme('colors.muted.foreground');
+  }
+  /* 우선순위 높이기 위해 .fc 추가 */
+  .dark .fc .fc-timegrid-axis-frame { /* 시간 축 왼쪽 상단 빈 셀 */
+     background-color: transparent !important; /* 투명 처리 */
+     border-color: transparent !important;
+  }
+
+  .fc-timegrid-slot-label { /* 시간 눈금 */
+     color: theme('colors.muted.foreground / 70%');
+  }
+
+  .fc-list-day-text, /* 리스트 뷰 날짜 */
+  .fc-list-day-side-text /* 리스트 뷰 요일 */ {
+    color: theme('colors.foreground');
+  }
+
+  .fc-list-event-time {
+    color: theme('colors.muted.foreground');
+  }
+}
+
+/* 버튼 스타일 조정 (shadcn/ui 버튼과 유사하게) */
+.fc .fc-button {
+  background-color: theme('colors.primary.DEFAULT');
+  border-color: theme('colors.primary.DEFAULT');
+  color: theme('colors.primary.foreground');
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  border-radius: 0.375rem; /* rounded-md */
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.fc .fc-button:hover {
+  background-color: theme('colors.primary.DEFAULT / 90%');
+  border-color: theme('colors.primary.DEFAULT / 90%');
+}
+
+.fc .fc-button:disabled {
+  background-color: theme('colors.muted.DEFAULT');
+  border-color: theme('colors.muted.DEFAULT');
+  color: theme('colors.muted.foreground');
+  opacity: 0.5;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  background-color: theme('colors.primary.DEFAULT / 80%');
+  border-color: theme('colors.primary.DEFAULT / 80%');
+}
+
+/* 오늘(today) 버튼 스타일 (primary 색상으로 변경) */
+.fc .fc-today-button {
+  background-color: theme('colors.primary.DEFAULT');
+  border-color: theme('colors.primary.DEFAULT');
+  color: theme('colors.primary.foreground');
+}
+.fc .fc-today-button:hover {
+  background-color: theme('colors.primary.DEFAULT / 90%');
+  border-color: theme('colors.primary.DEFAULT / 90%');
+}
+.fc .fc-today-button:disabled {
+  background-color: theme('colors.muted.DEFAULT');
+  border-color: theme('colors.muted.DEFAULT');
+  color: theme('colors.muted.foreground');
+  opacity: 0.5;
+}
+
+
+/* 헤더 툴바 간격 조정 */
+.fc .fc-header-toolbar {
+  margin-bottom: 1.5em; /* 기본값보다 약간 더 여백 */
+  display: flex;
+  justify-content: space-between; /* 양쪽 끝으로 배치 */
+  align-items: center;
+}
+.fc .fc-toolbar-chunk {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* 버튼 사이 간격 */
+}
+
+/* 이벤트 스타일 */
+.fc-event {
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 0.8rem;
+}
+
+/* 시간 그리드 슬롯 라벨 (시간 표시) */
+.fc-timegrid-slot-label {
+  font-size: 0.75rem;
+}
+
+/* 월간 뷰 날짜 번호 */
+.fc-daygrid-day-number {
+  padding: 4px;
+  font-size: 0.8rem;
+}
+
+/* 선택된 날짜/시간 배경 */
+.fc .fc-highlight {
+  background: theme('colors.accent.DEFAULT / 30%');
+}
+
+/* .dark .fc-col-header-cell 규칙 제거 (위에서 처리) */
+
+/* 카드 테두리 깜빡임 애니메이션 */
+@keyframes pulse-orange-border {
+  0%, 100% {
+    border-color: hsl(var(--border));
+  }
+  50% {
+    border-color: #f97316; /* 주황색 */
+  }
+}
+
+.card-pulse-orange {
+  animation: pulse-orange-border 3s infinite;
+  border-width: 2px; /* 테두리 두께 보장 */
+}
+
+.card-border-red {
+  border-color: hsl(var(--destructive));
+  border-width: 2px; /* 테두리 두께 보장 */
+}
+
+/* 뱃지 깜빡임 (기존 Tailwind 설정 사용) */
+/* .badge-pulse-orange { ... } */
+/* .badge-border-red { ... } */
+/* 뱃지는 Tailwind 클래스로 처리하므로 별도 CSS 불필요 */
+
+/* 숨쉬는 듯한 배경 애니메이션 (CSS 변수 사용) */
+@keyframes pulse-bg {
+  0%, 100% {
+    opacity: 0.3; /* 시작/끝 투명도 30% */
+  }
+  50% {
+    opacity: 1.0; /* 중간 투명도 100% */
+  }
+}
+
+/* pulse-border 관련 코드 제거 완료 */
+
+/* 이전 중복/오류 코드 제거 주석 제거 */
+
+/* 일정 깜빡임 효과 */
+@keyframes blink-animation {
+  0%, 100% {
+    background-color: transparent; /* 또는 원래 배경색 */
+    outline: 2px solid transparent;
+  }
+  50% {
+    background-color: rgba(59, 130, 246, 0.3); /* 연한 파란색 배경 */
+    outline: 2px solid rgba(59, 130, 246, 0.7); /* 진한 파란색 테두리 */
+  }
+}
+
+.highlight-blink {
+  animation: blink-animation 0.5s ease-in-out 3; /* 0.5초 간격으로 3번 깜빡임 */
+  border-radius: 4px; /* 약간 둥근 모서리 */
+  transition: background-color 0.3s ease, outline 0.3s ease; /* 부드러운 전환 효과 */
+}
+
+/* Hide number input spinners */
+/* Chrome, Safari, Edge, Opera */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: none; /* 표준 속성 추가 */
+}
+
+/* 모바일 사이드바 상단 헤더 전체 숨기기 */
+/* data-state="open"인 Sheet(Dialog) 내부의 header 요소를 숨깁니다. */
+div[data-state="open"][role="dialog"] div[data-radix-dialog-content] > header {
+  display: none !important;
+}

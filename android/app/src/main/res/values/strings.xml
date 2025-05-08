@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FitFluent</string>
+    <string name="title_activity_main">FitFluent</string>
+    <string name="package_name">com.fitfluent.connect</string>
+    <string name="custom_url_scheme">com.fitfluent.connect</string>
+</resources>

@@ -1,0 +1,168 @@
+{
+  "mcpServers": {
+    "github.com/modelcontextprotocol/servers/tree/main/src/git": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-git",
+        "--repository",
+        "c:\\Users\\jijij\\OneDrive\\Desktop\\test\\supabase_flutter_app"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "github.com/modelcontextprotocol/servers/tree/main/src/sentry": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-sentry",
+        "--auth-token",
+        "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"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "supabase": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "sbp_df69a064ee955dea07c5794b4af83e83ccc7eedf"
+      ],
+      "alwaysAllow": [
+        "list_projects",
+        "get_project",
+        "get_cost",
+        "confirm_cost",
+        "create_project",
+        "pause_project",
+        "restore_project",
+        "list_organizations",
+        "get_organization",
+        "list_tables",
+        "list_extensions",
+        "list_migrations",
+        "apply_migration",
+        "execute_sql",
+        "get_logs",
+        "get_project_url",
+        "get_anon_key",
+        "generate_typescript_types",
+        "create_branch",
+        "list_branches",
+        "delete_branch",
+        "merge_branch",
+        "reset_branch",
+        "rebase_branch"
+      ]
+    },
+    "mcp-installer": {
+      "command": "npx",
+      "args": [
+        "@anaisbetts/mcp-installer"
+      ]
+    },
+    "supabase-mcp-server Docs": {
+      "type": "sse",
+      "url": "https://gitmcp.io/alexander-zuev/supabase-mcp-server",
+      "alwaysAllow": [
+        "fetch_supabase_mcp_server_docs",
+        "search_supabase_mcp_server_docs",
+        "search_supabase_mcp_server_code",
+        "fetch_url_content"
+      ],
+      "disabled": false
+    },
+    "supabase - jijijjh@gmail.com's Project": {
+      "url": "https://mcp.composio.dev/supabase/mysterious-sharp-plumber-FG27gQ",
+      "alwaysAllow": [
+        "SUPABASE_LIST_ALL_PROJECTS",
+        "SUPABASE_GET_PROJECT_API_KEYS",
+        "SUPABASE_LIST_ALL_ORGANIZATIONS",
+        "SUPABASE_CREATE_A_FUNCTION",
+        "SUPABASE_CREATE_A_PROJECT",
+        "SUPABASE_LIST_ALL_DATABASE_BRANCHES",
+        "SUPABASE_BETA_RUN_SQL_QUERY",
+        "SUPABASE_LIST_ALL_FUNCTIONS",
+        "SUPABASE_CREATE_AN_ORGANIZATION",
+        "SUPABASE_GENERATE_TYPE_SCRIPT_TYPES",
+        "SUPABASE_GET_REQUIRED_PARAMETERS",
+        "SUPABASE_CHECK_ACTIVE_CONNECTION",
+        "SUPABASE_INITIATE_CONNECTION"
+      ],
+      "disabled": false
+    },
+    "playwright-mcp-server": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@executeautomation/playwright-mcp-server",
+        "--key",
+        "2adc117a-b998-4ff4-9dfa-02d3ba834ce3"
+      ],
+      "disabled": false,
+      "alwaysAllow": [
+        "start_codegen_session",
+        "end_codegen_session",
+        "get_codegen_session",
+        "clear_codegen_session",
+        "playwright_navigate",
+        "playwright_screenshot",
+        "playwright_click",
+        "playwright_iframe_click",
+        "playwright_fill",
+        "playwright_select",
+        "playwright_hover",
+        "playwright_evaluate",
+        "playwright_console_logs",
+        "playwright_close",
+        "playwright_get",
+        "playwright_post",
+        "playwright_put",
+        "playwright_patch",
+        "playwright_delete",
+        "playwright_expect_response",
+        "playwright_assert_response",
+        "playwright_custom_user_agent",
+        "playwright_get_visible_text",
+        "playwright_get_visible_html",
+        "playwright_go_back",
+        "playwright_go_forward",
+        "playwright_drag",
+        "playwright_press_key",
+        "playwright_save_as_pdf"
+      ]
+    },
+    "filesystem": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@smithery-ai/filesystem",
+        "--config",
+        "{\"allowedDirs\":\"c:\\\\Users\\\\jijij\\\\OneDrive\\\\Desktop\\\\NEWSUPA\\\\fit-fluent-connect\"}"
+      ],
+      "alwaysAllow": [
+        "read_file",
+        "read_multiple_files",
+        "write_file",
+        "edit_file",
+        "create_directory",
+        "list_directory",
+        "directory_tree",
+        "move_file",
+        "search_files",
+        "get_file_info",
+        "list_allowed_directories"
+      ]
+    }
+  }
+}
