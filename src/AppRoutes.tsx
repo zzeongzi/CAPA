@@ -9,7 +9,6 @@ import CenterSelectionPage from "./pages/CenterSelectionPage";
 import { Dashboard } from "./pages/Dashboard";
 import MembersPage from "./pages/MembersPage";
 import MembersPageMobile from "./pages/MembersPageMobile";
-import ChatPage from "./pages/ChatPage";
 import SchedulePage from "./pages/SchedulePage";
 import SchedulePageMobile from "./pages/SchedulePageMobile";
 import WorkoutPage from "./pages/WorkoutPage";
@@ -25,11 +24,16 @@ import WorkoutHistoryPage from "./pages/WorkoutHistoryPage"; // 운동 기록 �
 import BodyCompositionPage from "./pages/BodyCompositionPage"; // 체성분 측정 페이지 추가
 import { AppLayout } from "./components/layout/AppLayout";
 import BodyCompositionHistoryPage from "./pages/BodyCompositionHistoryPage"; // 중복 가능성 있는 라인, 하나만 남김
+import ConsultationPage from "./pages/ConsultationPage"; // 상담 페이지 import 추가
 import RevenueSettingsPage from "./pages/RevenueSettingsPage";
 import MonthlyReportPage from "./pages/MonthlyReportPage";
 import MonthlyReportPageMobile from "./pages/MonthlyReportPageMobile"; // 모바일 월별 보고서 페이지 import
 import RevenueSimulatorPage from "./pages/RevenueSimulatorPage";
 import BodyCompositionHistoryPageMobile from "./pages/BodyCompositionHistoryPageMobile"; // 추가
+import FeedbackPage from "./pages/FeedbackPage";
+import DeveloperFeedbackPage from "./pages/DeveloperFeedbackPage";
+import AnnouncementsPage from "./pages/admin/AnnouncementsPage";
+import UserAnnouncementsPage from "./pages/UserAnnouncementsPage"; // 일반 사용자용 공지사항 페이지 import
 
 const AppRoutes = () => {
   const navigate = useNavigate();
@@ -124,25 +128,6 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             {isMobile ? <MembersPageMobile /> : <MembersPage />}
-          </ProtectedRoute>
-        }
-      />
-      {/* 채팅 목록 페이지 라우트 추가 */}
-      <Route
-        path="/chat"
-        element={
-          <ProtectedRoute>
-            {/* TODO: ChatListPage 컴포넌트로 교체 */}
-            <ChatPage />
-          </ProtectedRoute>
-        }
-      />
-      {/* 개별 채팅 페이지 라우트 */}
-      <Route
-        path="/chat/:roomId" // memberId 대신 roomId 사용 고려
-        element={
-          <ProtectedRoute>
-            <ChatPage />
           </ProtectedRoute>
         }
       />
@@ -243,6 +228,61 @@ const AppRoutes = () => {
             <AppLayout>
               {isMobile ? <BodyCompositionHistoryPageMobile /> : <BodyCompositionHistoryPage />}
             </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      {/* 피드백 페이지 라우트 추가 */}
+      <Route
+        path="/feedback"
+        element={
+          <ProtectedRoute>
+            <FeedbackPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* 개발자 피드백 관리 페이지 라우트 추가 */}
+      <Route
+        path="/admin/feedbacks" // 또는 /developer/feedbacks
+        element={
+          <ProtectedRoute requiredRole="developer"> {/* 역할 기반 접근 제어 */}
+            <DeveloperFeedbackPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* 개발자 공지사항 관리 페이지 라우트 추가 */}
+      <Route
+        path="/admin/announcements"
+        element={
+          <ProtectedRoute requiredRole="developer"> {/* 역할 기반 접근 제어 (developer로 수정) */}
+            <AnnouncementsPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* 일반 사용자용 공지사항 페이지 라우트 */}
+      <Route
+        path="/announcements"
+        element={
+          <ProtectedRoute> {/* 모든 로그인 사용자 접근 가능 */}
+            <UserAnnouncementsPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* 특정 공지사항 상세 보기 (일반 사용자용) - UserAnnouncementsPage 내부에서 id 파라미터로 처리 */}
+      {/* <Route
+        path="/announcements/:id" // 또는 ?id= 파라미터 방식 유지
+        element={
+          <ProtectedRoute>
+            <UserAnnouncementsPage />
+          </ProtectedRoute>
+        }
+      /> */}
+
+      {/* 상담 페이지 라우트 */}
+      <Route
+        path="/consultation"
+        element={
+          <ProtectedRoute>
+            <ConsultationPage />
           </ProtectedRoute>
         }
       />

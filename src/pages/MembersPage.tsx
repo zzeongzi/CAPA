@@ -64,7 +64,7 @@ import { Database } from '@/integrations/supabase/types';
 const MembersPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-  const [myMembers, setMyMembers] = useState<Member[]>([]);
+  // const [myMembers, setMyMembers] = useState<Member[]>([]); // "나의 회원" 관련 상태 제거
   const { members, isLoading, refetchMembers, removeMemberLocally } = useMembers();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -80,11 +80,12 @@ const MembersPage = () => {
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [columnCount, setColumnCount] = useState<number>(1); // 초기값 1열 (모바일 우선)
-  const [myMembersSortConfig, setMyMembersSortConfig] = useState<{ key: keyof Member | null; direction: 'ascending' | 'descending' }>({ key: 'name', direction: 'ascending' });
-  const [mainTab, setMainTab] = useState<'allMembers' | 'myMembers'>('myMembers');
-  const [myMembersSearchQuery, setMyMembersSearchQuery] = useState("");
-  const [myMembersActiveTab, setMyMembersActiveTab] = useState("active");
-  const [myMembersFilterCriteria, setMyMembersFilterCriteria] = useState<{ status: 'all' | 'active' | 'inactive'; plan: 'all' | string }>({ status: 'all', plan: 'all' });
+  // const [myMembersSortConfig, setMyMembersSortConfig] = useState<{ key: keyof Member | null; direction: 'ascending' | 'descending' }>({ key: 'name', direction: 'ascending' }); // "나의 회원" 관련 상태 제거
+  // const [mainTab, setMainTab] = useState<'allMembers' | 'myMembers'>('myMembers'); // "나의 회원" 관련 상태 제거, 기본 "allMembers"
+  const [mainTab, setMainTab] = useState<'allMembers'>('allMembers'); // 기본 "allMembers"
+  // const [myMembersSearchQuery, setMyMembersSearchQuery] = useState(""); // "나의 회원" 관련 상태 제거
+  // const [myMembersActiveTab, setMyMembersActiveTab] = useState("active"); // "나의 회원" 관련 상태 제거
+  // const [myMembersFilterCriteria, setMyMembersFilterCriteria] = useState<{ status: 'all' | 'active' | 'inactive'; plan: 'all' | string }>({ status: 'all', plan: 'all' }); // "나의 회원" 관련 상태 제거
 
   // 화면 크기에 따라 초기 columnCount 설정 (PC에서는 4열 기본)
   useEffect(() => {
@@ -105,39 +106,7 @@ const MembersPage = () => {
   }, []);
 
 
-  useEffect(() => {
-    // console.log('[MembersPage] myMembers state updated:', myMembers);
-  }, [myMembers]);
-
-  useEffect(() => {
-    const fetchMyMembers = async () => {
-      if (!user) return;
-      try {
-        const { data: myMemberRelations, error: relationError } = await supabase
-          .from('my_trainer_members')
-          .select('member_id')
-          .eq('trainer_id', user.id);
-
-        if (relationError) throw relationError;
-
-        const myMemberPks = new Set(myMemberRelations.map(rel => rel.member_id));
-        const initialMyMembers = members.filter(member => myMemberPks.has(member.memberPk));
-        setMyMembers(initialMyMembers);
-
-      } catch (error: any) {
-        console.error("Error fetching my members:", error);
-        toast({
-          title: "오류",
-          description: "나의 회원 목록을 불러오는 중 오류가 발생했습니다.",
-          variant: "destructive",
-        });
-      }
-    };
-
-    if (user && !isLoading && members.length > 0) {
-       fetchMyMembers();
-    }
-  }, [user, isLoading, members, toast]);
+  // "나의 회원" 관련 useEffect 제거
 
 
   const filteredMembers = useMemo(() => {
@@ -189,44 +158,7 @@ const MembersPage = () => {
     return sortableMembers;
   }, [filteredMembers, sortConfig]);
 
-  const sortedMyMembers = useMemo(() => {
-    const filtered = myMembers.filter((member) => {
-      const matchesSearch =
-        myMembersSearchQuery === '' ||
-        member.name.toLowerCase().includes(myMembersSearchQuery.toLowerCase()) ||
-        (member.phone && member.phone.includes(myMembersSearchQuery));
-      const matchesTab =
-        myMembersActiveTab === "all" ||
-        (myMembersActiveTab === "active" && member.status === "active") ||
-        (myMembersActiveTab === "inactive" && member.status === "inactive");
-      const matchesStatusFilter =
-        myMembersFilterCriteria.status === 'all' || member.status === myMembersFilterCriteria.status;
-      const matchesPlanFilter =
-        myMembersFilterCriteria.plan === 'all' || (member.plan && member.plan === myMembersFilterCriteria.plan);
-      return matchesSearch && matchesTab && matchesStatusFilter && matchesPlanFilter;
-    });
-    let sortableMyMembers = [...filtered];
-    if (myMembersSortConfig.key !== null) {
-      sortableMyMembers.sort((a, b) => {
-        const aValue = a[myMembersSortConfig.key!];
-        const bValue = b[myMembersSortConfig.key!];
-        if (aValue == null && bValue == null) return 0;
-        if (aValue == null) return 1;
-        if (bValue == null) return -1;
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          const comparison = aValue.localeCompare(bValue, 'ko');
-          return myMembersSortConfig.direction === 'ascending' ? comparison : -comparison;
-        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return myMembersSortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
-        } else {
-          if (String(aValue) < String(bValue)) return myMembersSortConfig.direction === 'ascending' ? -1 : 1;
-          if (String(aValue) > String(bValue)) return myMembersSortConfig.direction === 'ascending' ? 1 : -1;
-          return 0;
-        }
-      });
-    }
-    return sortableMyMembers;
-  }, [myMembers, myMembersSearchQuery, myMembersActiveTab, myMembersFilterCriteria, myMembersSortConfig]);
+  // "나의 회원" 관련 sortedMyMembers, filteredMyMembersBase, myMembersCounts 제거
 
   const allMembersCounts = useMemo(() => {
     const baseFiltered = members.filter((member) => {
@@ -245,25 +177,7 @@ const MembersPage = () => {
     return { total: baseFiltered.length, active, inactive };
   }, [members, searchQuery, filterCriteria]);
 
-  const filteredMyMembersBase = useMemo(() => {
-     return myMembers.filter((member) => {
-       const matchesSearch =
-         myMembersSearchQuery === '' ||
-         member.name.toLowerCase().includes(myMembersSearchQuery.toLowerCase()) ||
-         (member.phone && member.phone.includes(myMembersSearchQuery));
-       const matchesStatusFilter =
-         myMembersFilterCriteria.status === 'all' || member.status === myMembersFilterCriteria.status;
-       const matchesPlanFilter =
-         myMembersFilterCriteria.plan === 'all' || (member.plan && member.plan === myMembersFilterCriteria.plan);
-       return matchesSearch && matchesStatusFilter && matchesPlanFilter;
-     });
-  }, [myMembers, myMembersSearchQuery, myMembersFilterCriteria]);
-
-  const myMembersCounts = useMemo(() => {
-    const active = filteredMyMembersBase.filter(m => m.status === 'active').length;
-    const inactive = filteredMyMembersBase.filter(m => m.status === 'inactive').length;
-    return { total: filteredMyMembersBase.length, active, inactive };
-  }, [filteredMyMembersBase]);
+  // "나의 회원" 관련 filteredMyMembersBase, myMembersCounts 제거
 
   const requestSort = (key: keyof Member) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -273,29 +187,14 @@ const MembersPage = () => {
     setSortConfig({ key, direction });
   };
 
-  const requestMyMembersSort = (key: keyof Member) => {
-    let direction: 'ascending' | 'descending' = 'ascending';
-    if (myMembersSortConfig.key === key && myMembersSortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setMyMembersSortConfig({ key, direction });
-};
+  // "나의 회원" 관련 requestMyMembersSort 제거
 
   const getSortIcon = (key: keyof Member) => {
     if (sortConfig.key !== key) { return <ArrowUpDown className="ml-1 h-3 w-3 text-muted-foreground/50" />; }
     return sortConfig.direction === 'ascending' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />;
   };
 
-  const getMyMembersSortIcon = (key: keyof Member) => {
-    if (myMembersSortConfig.key !== key) { return <ArrowUpDown className="ml-1 h-3 w-3 text-muted-foreground/50" />; }
-    return myMembersSortConfig.direction === 'ascending' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />;
-  };
-
-const handleAddMyMember = (member: Member) => {
-    if (!myMembers.some(myMember => myMember.id === member.id)) {
-      setMyMembers([...myMembers, member]);
-    }
-  };
+  // "나의 회원" 관련 getMyMembersSortIcon, handleAddMyMember 제거
 
   const handleToggleCheckboxMode = () => {
     setIsCheckboxMode(true);
@@ -310,79 +209,8 @@ const handleAddMyMember = (member: Member) => {
     });
   };
 
-  const handleSaveMyMembers = async () => {
-    if (!user) return;
-    const trainerId = user.id;
-    const finalSelectedIds = new Set(selectedMemberIds);
-    if (finalSelectedIds.size === 0) { setIsCheckboxMode(false); return; }
-    const currentMyMemberIds = new Set(myMembers.map(m => m.id));
-    const memberIdsToInsert: string[] = [];
-    const alreadyExistingIds: string[] = [];
-    finalSelectedIds.forEach(id => {
-      if (currentMyMemberIds.has(id)) { alreadyExistingIds.push(id); } else { memberIdsToInsert.push(id); }
-    });
-    if (memberIdsToInsert.length === 0 && alreadyExistingIds.length > 0) {
-      toast({ title: "알림", description: "선택한 회원은 모두 이미 나의 회원 목록에 있습니다." });
-      setIsCheckboxMode(false); setSelectedMemberIds(new Set()); return;
-    }
-    try {
-      if (memberIdsToInsert.length > 0) {
-        const { data: memberPksData, error: pkError } = await supabase.from('members').select('id').in('user_id', memberIdsToInsert);
-        if (pkError) throw pkError;
-        const memberPksToInsert = memberPksData?.map(m => m.id) || [];
-        const { data: existingRelations, error: checkError } = await supabase.from('my_trainer_members').select('member_id').eq('trainer_id', trainerId).in('member_id', memberPksToInsert);
-        if (checkError) throw checkError;
-        const existingMemberPks = new Set(existingRelations?.map(rel => rel.member_id) || []);
-        const trulyNewMemberIds = memberIdsToInsert.filter(userId => {
-            const memberInfo = members.find(m => m.id === userId);
-            return memberInfo && !existingMemberPks.has(memberInfo.memberPk);
-        });
-        if (trulyNewMemberIds.length > 0) {
-          const { data: existingMembers, error: memberCheckError } = await supabase.from('members').select('user_id').in('user_id', trulyNewMemberIds);
-          if (memberCheckError) throw memberCheckError;
-          const existingUserIdsInMembersTable = new Set(existingMembers?.map(m => m.user_id) || []);
-          const finalUserIdsToInsert = trulyNewMemberIds.filter(id => existingUserIdsInMembersTable.has(id));
-          if (finalUserIdsToInsert.length > 0) {
-            const membersToInsertDetails = members.filter(m => finalUserIdsToInsert.includes(m.id));
-            const insertData = membersToInsertDetails.map(memberDetail => ({ trainer_id: trainerId, member_id: memberDetail.memberPk }));
-            const { error: insertError } = await supabase.from('my_trainer_members').insert(insertData);
-            if (insertError) {
-              if (insertError.code !== '23505') { throw insertError; } 
-              else { console.warn("Insert failed with unique violation, likely due to concurrent request. Ignoring.", insertError); }
-            }
-             const newMembersToAdd = members.filter(member => finalUserIdsToInsert.includes(member.id));
-             setMyMembers(prevMyMembers => [...prevMyMembers, ...newMembersToAdd]);
-             toast({ title: "성공", description: `${finalUserIdsToInsert.length}명의 회원을 나의 회원 목록에 추가했습니다.` });
-          } else {
-             toast({ title: "알림", description: "선택한 회원 정보가 유효하지 않거나 이미 추가되었습니다.", variant: "destructive" });
-          }
-        } else if (alreadyExistingIds.length > 0) {
-           toast({ title: "알림", description: "선택한 회원은 모두 이미 나의 회원 목록에 있습니다." });
-        } else { console.warn("handleSaveMyMembers: No new members to insert, but reached insertion logic."); }
-      } else if (alreadyExistingIds.length > 0) {
-         toast({ title: "알림", description: "선택한 회원은 모두 이미 나의 회원 목록에 있습니다." });
-      } else { console.warn("handleSaveMyMembers: No new members to insert, but reached insertion logic."); }
-    } catch (error: any) {
-      console.error("Error saving my members:", error);
-      toast({ title: "오류", description: `나의 회원 저장 중 오류가 발생했습니다: ${error.message}`, variant: "destructive" });
-    } finally { setIsCheckboxMode(false); setSelectedMemberIds(new Set()); }
-  };
+  // "나의 회원" 관련 handleSaveMyMembers, handleCancelCheckboxMode, handleLongPressMember, handleRemoveMyMember 제거
 
-  const handleCancelCheckboxMode = () => { setIsCheckboxMode(false); setSelectedMemberIds(new Set()); };
-  const handleLongPressMember = (memberId: string) => { if (!isCheckboxMode) { setIsCheckboxMode(true); setSelectedMemberIds(new Set([memberId])); } };
-  const handleRemoveMyMember = async (memberId: string) => {
-    if (!user) return;
-    const trainerId = user.id;
-    try {
-      const { error } = await supabase.from('my_trainer_members').delete().match({ trainer_id: trainerId, member_id: memberId });
-      if (error) throw error;
-      setMyMembers(prevMyMembers => prevMyMembers.filter(member => member.id !== memberId));
-      toast({ title: "성공", description: "나의 회원 목록에서 제거했습니다." });
-    } catch (error: any) {
-      console.error("Error removing my member:", error);
-      toast({ title: "오류", description: `나의 회원 제거 중 오류가 발생했습니다: ${error.message}`, variant: "destructive" });
-    }
-  };
   const handleRegisterNewMember = () => { navigate("/members/new"); };
   const handleOpenEditModal = (member: Member) => { setEditingMember(member); setIsModalOpen(true); };
   const handleCloseModal = () => { setIsModalOpen(false); setEditingMember(null); };
@@ -412,7 +240,7 @@ const handleAddMyMember = (member: Member) => {
     switch (columnCount) {
       case 2: return 'sm:grid-cols-2';
       case 3: return 'sm:grid-cols-2 md:grid-cols-3';
-      case 4: return 'sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
+      case 4: return 'sm:grid-cols-2 md:grid-cols-4'; // md에서도 4열을 시도하도록 수정
       default: return 'grid-cols-1'; // 기본값 (혹은 columnCount가 1일 때)
     }
   };
@@ -438,11 +266,11 @@ const handleAddMyMember = (member: Member) => {
           </Button>
         </div>
 
-        <Tabs value={mainTab} onValueChange={(value) => setMainTab(value as 'allMembers' | 'myMembers')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
+        <Tabs value={mainTab} onValueChange={(value) => setMainTab(value as 'allMembers')} className="w-full">
+          {/* <TabsList className="grid w-full grid-cols-2 mb-4"> // "나의 회원" 탭 제거
             <TabsTrigger value="allMembers">전체 회원</TabsTrigger>
             <TabsTrigger value="myMembers">나의 회원</TabsTrigger>
-          </TabsList>
+          </TabsList> */}
 
           <TabsContent value="allMembers">
             <Card className="glass-card">
@@ -451,16 +279,17 @@ const handleAddMyMember = (member: Member) => {
                   <CardTitle>전체 회원 목록</CardTitle>
                   {/* 컨트롤 영역: 모바일에서는 수직, sm 이상에서는 수평으로 배치하고, 버튼들이 한 줄에 보이도록 수정 */}
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 ml-auto">
-                    {isCheckboxMode ? (
+                    {/* "나의 회원 추가" 관련 isCheckboxMode 및 버튼 제거 */}
+                    {/* {isCheckboxMode ? (
                       <>
                         <Button onClick={handleSaveMyMembers} className="w-full sm:w-auto">저장</Button>
                         <Button variant="outline" onClick={handleCancelCheckboxMode} className="w-full sm:w-auto">취소</Button>
                       </>
-                    ) : (
+                    ) : ( */}
                       <>
-                        <Button onClick={handleToggleCheckboxMode} className="w-full sm:w-auto">
+                        {/* <Button onClick={handleToggleCheckboxMode} className="w-full sm:w-auto">
                           <UserPlus className="mr-2 h-4 w-4" /> 나의 회원 추가
-                        </Button>
+                        </Button> */}
                         <div className="relative flex-grow w-full sm:w-auto">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                           <Input
@@ -512,7 +341,7 @@ const handleAddMyMember = (member: Member) => {
                             </Sheet>
                         </div>
                       </>
-                    )}
+                    {/* )} */}
                   </div>
                 </div>
               </CardHeader>
@@ -529,7 +358,17 @@ const handleAddMyMember = (member: Member) => {
                     (<div className={`grid gap-4 py-1 ${getGridColsClass()}`}>
                       {sortedMembers.map((member) => (
                         <div key={member.id} className="h-auto">
-                          <MemberListItem member={member} onOpenEditModal={handleOpenEditModal} onOpenDeleteDialog={handleOpenDeleteDialog} onAddMyMember={handleAddMyMember} isCheckboxMode={isCheckboxMode} isSelected={selectedMemberIds.has(member.id)} onSelectMember={handleSelectMember} onLongPress={handleLongPressMember} />
+                          {/* "나의 회원 추가" 관련 props 제거 */}
+                          <MemberListItem
+                            member={member}
+                            onOpenEditModal={handleOpenEditModal}
+                            onOpenDeleteDialog={handleOpenDeleteDialog}
+                            onAddMyMember={() => {}} // 임시, 추후 MemberListItem에서 제거
+                            isCheckboxMode={false} // 항상 false
+                            isSelected={false} // 항상 false
+                            onSelectMember={() => {}} // 임시, 추후 MemberListItem에서 제거
+                            onLongPress={() => {}} // 임시, 추후 MemberListItem에서 제거
+                          />
                         </div>
                       ))}
                     </div>)
@@ -545,76 +384,7 @@ const handleAddMyMember = (member: Member) => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="myMembers">
-            <Card className="glass-card">
-              <CardHeader className="pb-2">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <CardTitle>나의 회원 목록</CardTitle>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 ml-auto">
-                    <div className="relative flex-grow w-full sm:w-auto">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input placeholder="이름, 전화번호 검색..." className="pl-10 w-full" value={myMembersSearchQuery} onChange={(e) => setMyMembersSearchQuery(e.target.value)} />
-                    </div>
-                    <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
-                        <Button variant="outline" onClick={handleSetColumnCount} className="flex-1 sm:flex-initial flex items-center justify-center px-2 sm:px-3" aria-label={`현재 ${columnCount}열 보기, 클릭하여 변경`}>
-                            <span className="mr-1 sm:mr-2">{columnCount}열</span>
-                            <LayoutGrid className="h-4 w-4" />
-                        </Button>
-                        <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
-                        <SheetTrigger asChild>
-                            <Button variant="outline" size="icon" className="flex-shrink-0 px-2 sm:px-3">
-                            <Filter className="h-4 w-4" />
-                            </Button>
-                        </SheetTrigger>
-                        <SheetContent side="right">
-                            <SheetHeader><SheetTitle>필터</SheetTitle></SheetHeader>
-                            <div className="py-4 space-y-4">
-                            <div>
-                                <h3 className="text-sm font-medium mb-2">상태</h3>
-                                <ToggleGroup type="single" value={myMembersFilterCriteria.status} onValueChange={(value) => { if (value) setMyMembersFilterCriteria(prev => ({ ...prev, status: value as 'all' | 'active' | 'inactive' })); }} className="grid grid-cols-3 gap-2">
-                                <ToggleGroupItem value="all" className="flex-1">전체</ToggleGroupItem>
-                                <ToggleGroupItem value="active" className="flex-1">활성</ToggleGroupItem>
-                                <ToggleGroupItem value="inactive" className="flex-1">비활성</ToggleGroupItem>
-                                </ToggleGroup>
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-medium mb-2">플랜</h3>
-                                <ToggleGroup type="single" value={myMembersFilterCriteria.plan} onValueChange={(value) => { if (value) setMyMembersFilterCriteria(prev => ({ ...prev, plan: value })); }} className="grid grid-cols-3 gap-2">
-                                <ToggleGroupItem value="all" className="flex-1">전체</ToggleGroupItem>
-                                <ToggleGroupItem value="Standard" className="flex-1">Standard</ToggleGroupItem>
-                                <ToggleGroupItem value="Premium" className="flex-1">Premium</ToggleGroupItem>
-                                </ToggleGroup>
-                            </div>
-                            <SheetClose asChild><Button className="w-full mt-4">적용</Button></SheetClose>
-                            </div>
-                        </SheetContent>
-                        </Sheet>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Tabs value={myMembersActiveTab} onValueChange={setMyMembersActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 mb-4">
-                    <TabsTrigger value="all">전체 {myMembersCounts.total}</TabsTrigger>
-                    <TabsTrigger value="active">활성 {myMembersCounts.active}</TabsTrigger>
-                    <TabsTrigger value="inactive">비활성 {myMembersCounts.inactive}</TabsTrigger>
-                  </TabsList>
-                  {isLoading ? (
-                    <div className="flex justify-center items-center py-10"> <Loader2 className="h-8 w-8 animate-spin text-primary" /> </div>
-                  ) : sortedMyMembers.length === 0 ? (
-                    (<p className="text-muted-foreground text-center py-4">나의 회원이 없습니다.</p>)
-                  ) : (
-                    (<div className={`grid gap-4 py-1 ${getGridColsClass()}`}>
-                      {sortedMyMembers.map(member => (
-                        <MemberListItem key={`my-${member.id}`} member={member} onOpenEditModal={handleOpenEditModal} onOpenDeleteDialog={handleOpenDeleteDialog} handleRemoveMyMember={handleRemoveMyMember} isMyMemberView={true} onAddMyMember={() => {}} isCheckboxMode={false} isSelected={false} onSelectMember={() => {}} onLongPress={() => {}} />
-                      ))}
-                    </div>)
-                  )}
-                </Tabs>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* "나의 회원" TabsContent 제거 */}
         </Tabs>
 
         <EditPTSessionsModal isOpen={isModalOpen} onClose={handleCloseModal} member={editingMember} onUpdateSuccess={handleUpdateSuccess} />
@@ -695,46 +465,30 @@ const MemberListItem = ({
     startPos.current = null;
   };
 
-  const handlePointerDown = (clientX: number, clientY: number) => {
-    clearLongPressTimer();
-    startPos.current = { x: clientX, y: clientY };
-    longPressTimer.current = setTimeout(() => { onLongPress(member.id); longPressTimer.current = null; }, 700);
-  };
+  // const handlePointerDown = (clientX: number, clientY: number) => { // Long press 관련 로직 제거 또는 주석 처리
+  //   clearLongPressTimer();
+  //   startPos.current = { x: clientX, y: clientY };
+  //   longPressTimer.current = setTimeout(() => { /* onLongPress(member.id); */ longPressTimer.current = null; }, 700);
+  // };
 
-  const handlePointerMove = (clientX: number, clientY: number) => {
-    if (!startPos.current) return;
-    const deltaX = Math.abs(clientX - startPos.current.x);
-    const deltaY = Math.abs(clientY - startPos.current.y);
-    if (deltaX > 10 || deltaY > 10) { clearLongPressTimer(); }
-  };
+  // const handlePointerMove = (clientX: number, clientY: number) => { // Long press 관련 로직 제거 또는 주석 처리
+  //   if (!startPos.current) return;
+  //   const deltaX = Math.abs(clientX - startPos.current.x);
+  //   const deltaY = Math.abs(clientY - startPos.current.y);
+  //   if (deltaX > 10 || deltaY > 10) { clearLongPressTimer(); }
+  // };
 
-  const handlePointerUp = () => {
-    if (longPressTimer.current) { clearLongPressTimer(); }
-    startPos.current = null;
-  };
+  // const handlePointerUp = () => { // Long press 관련 로직 제거 또는 주석 처리
+  //   if (longPressTimer.current) { clearLongPressTimer(); }
+  //   startPos.current = null;
+  // };
 
   return (
     <Card
-      className={`relative transition-colors duration-150 ${isCheckboxMode ? 'cursor-pointer' : ''} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : 'hover:bg-muted/50'} h-full ${member.remainingSessions === 0 ? 'card-border-red' : member.remainingSessions != null && member.remainingSessions <= 5 ? 'card-pulse-orange' : ''}`}
-      onClick={() => { if (isCheckboxMode) { onSelectMember(member.id); } }}
-      onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => handlePointerDown(e.clientX, e.clientY)}
-      onPointerMove={(e: React.PointerEvent<HTMLDivElement>) => handlePointerMove(e.clientX, e.clientY)}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={clearLongPressTimer}
-      onContextMenu={(e: React.MouseEvent<HTMLDivElement>) => { e.preventDefault(); if (!isCheckboxMode) { onLongPress(member.id); } }}
+      className={`relative transition-colors duration-150 hover:bg-muted/50 h-full ${member.remainingSessions === 0 ? 'card-border-red' : member.remainingSessions != null && member.remainingSessions <= 5 ? 'card-pulse-orange' : ''}`}
+      // onClick, onPointerDown, onPointerMove, onPointerUp, onPointerLeave, onContextMenu 제거
     >
-      {isCheckboxMode && (
-        <div className="absolute top-2 right-2 z-10">
-          <Checkbox checked={isSelected} onCheckedChange={() => { onSelectMember(member.id); }} onClick={(e) => e.stopPropagation()} className="h-5 w-5 bg-background border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" />
-        </div>
-      )}
-      {isMyMemberView && handleRemoveMyMember ? (
-         <div className="absolute top-2 right-2 z-10">
-           <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleRemoveMyMember(member.id); }} className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90 p-1 h-auto flex-shrink-0">
-             <Trash2 className="h-4 w-4" /> <span className="sr-only">나의 회원에서 제거</span>
-           </Button>
-         </div>
-      ) : !isCheckboxMode && (
+      {/* isCheckboxMode, isMyMemberView 관련 UI 제거하고 항상 DropdownMenu 표시 */}
         <div className="absolute top-2 right-2 z-10">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -749,7 +503,6 @@ const MemberListItem = ({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      )}
       <CardHeader className="flex flex-row items-center space-y-0 pb-2 pt-4 px-4">
         <div className="flex items-center gap-3 overflow-hidden">
           <Avatar className="h-10 w-10 flex-shrink-0"> <AvatarImage src={member.avatarUrl} alt={member.name} /> <AvatarFallback>{member.initials}</AvatarFallback> </Avatar>
@@ -759,7 +512,7 @@ const MemberListItem = ({
       <CardContent className="px-4 pb-4 space-y-2">
         <div className="flex items-center justify-between text-sm"> <span className="text-muted-foreground">상태</span> {member.status === 'active' ? ( <CheckCircle2 className="h-4 w-4 text-green-600" /> ) : ( <XCircle className="h-4 w-4 text-destructive" /> )} </div>
         <div className="flex items-center justify-between text-sm"> <span className="text-muted-foreground">남은 PT</span> {(member.remainingSessions != null && member.totalSessions != null) ? ( <Badge variant="outline" className={`whitespace-nowrap ${member.remainingSessions === 0 ? 'card-border-red' : member.remainingSessions != null && member.remainingSessions <= 5 ? 'card-pulse-orange' : ''}`}> {member.remainingSessions} / {member.totalSessions} </Badge> ) : <span className="text-muted-foreground">-</span>} </div>
-        <div className="flex items-center justify-between text-sm"> <span className="text-muted-foreground">최근 세션</span> <span className="text-muted-foreground"> {member.lastSession ? format(new Date(member.lastSession), 'yyyy.MM.dd (eee) HH:mm', { locale: ko }) : '-'} </span> </div>
+        <div className="flex items-center justify-between text-xs"> <span className="text-muted-foreground flex-shrink-0 mr-2">최근 세션</span> <span className="text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis min-w-0 text-right"> {member.lastSession ? format(new Date(member.lastSession), 'yy.MM.dd (eee) HH:mm', { locale: ko }) : '-'} </span> </div>
       </CardContent>
     </Card>
   );

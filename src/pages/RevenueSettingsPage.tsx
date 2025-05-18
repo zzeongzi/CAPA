@@ -414,12 +414,12 @@ const RevenueSettingsPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>매출 하한 (이상)</TableHead> {/* 용어 변경 */}
-                    <TableHead>매출 상한 (미만)</TableHead>
-                    <TableHead>수업료 비율 (%)</TableHead>
-                    <TableHead>개인 인센티브</TableHead>
+                    <TableHead className="text-right">매출 하한 (이상)</TableHead> {/* 오른쪽 정렬 */}
+                    <TableHead className="text-right">매출 상한 (미만)</TableHead> {/* 오른쪽 정렬 */}
+                    <TableHead className="text-right">수업료 비율 (%)</TableHead> {/* 오른쪽 정렬 */}
+                    <TableHead className="text-right">개인 인센티브</TableHead> {/* 오른쪽 정렬 */}
                     {/* <TableHead>팀 인센티브</TableHead> */} {/* 팀 인센티브 헤더 제거 */}
-                    <TableHead className="text-right">액션</TableHead>
+                    <TableHead className="text-right"><span className="sr-only">액션</span></TableHead> {/* 제목 숨김 */}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -427,20 +427,21 @@ const RevenueSettingsPage = () => {
                     <TableRow key={rule.id}>
                       {editingRuleId === rule.id ? (
                         <>
-                          <TableCell> <Input type="text" value={formatNumberWithCommas(editingRuleData.revenue_threshold)} onChange={(e) => handleTableNumericInputChange(rule.id, 'revenue_threshold', e.target.value)} className="h-8"/> </TableCell>
-                          <TableCell> <Input type="text" value={formatNumberWithCommas(editingRuleData.revenue_upper_bound)} onChange={(e) => handleTableNumericInputChange(rule.id, 'revenue_upper_bound', e.target.value, false, undefined, true)} className="h-8" placeholder="없음"/> </TableCell>
-                          <TableCell> <Input type="number" value={editingRuleData.commission_rate ?? ''} onChange={(e) => handleTableNumericInputChange(rule.id, 'commission_rate', e.target.value, true, 100)} className="h-8" step="0.01"/> </TableCell>
-                          <TableCell> <Input type="text" value={formatNumberWithCommas(editingRuleData.incentive_amount)} onChange={(e) => handleTableNumericInputChange(rule.id, 'incentive_amount', e.target.value)} className="h-8"/> </TableCell>
+                          <TableCell> <Input type="text" value={formatNumberWithCommas(editingRuleData.revenue_threshold)} onChange={(e) => handleTableNumericInputChange(rule.id, 'revenue_threshold', e.target.value)} className="h-8 text-right"/> </TableCell>
+                          <TableCell> <Input type="text" value={formatNumberWithCommas(editingRuleData.revenue_upper_bound)} onChange={(e) => handleTableNumericInputChange(rule.id, 'revenue_upper_bound', e.target.value, false, undefined, true)} className="h-8 text-right" placeholder="없음"/> </TableCell>
+                          <TableCell> <Input type="number" value={editingRuleData.commission_rate ?? ''} onChange={(e) => handleTableNumericInputChange(rule.id, 'commission_rate', e.target.value, true, 100)} className="h-8 text-right" step="0.01"/> </TableCell>
+                          <TableCell> <Input type="text" value={formatNumberWithCommas(editingRuleData.incentive_amount)} onChange={(e) => handleTableNumericInputChange(rule.id, 'incentive_amount', e.target.value)} className="h-8 text-right"/> </TableCell>
                           {/* <TableCell> <Input type="text" value={formatNumberWithCommas(editingRuleData.team_incentive_amount)} onChange={(e) => handleTableNumericInputChange(rule.id, 'team_incentive_amount', e.target.value)} className="h-8"/> </TableCell> */} {/* 팀 인센티브 입력 제거 */}
                           <TableCell className="text-right space-x-1"> <Button variant="ghost" size="icon" onClick={() => handleSaveRule(rule.id)} disabled={isSavingRules}> {isSavingRules ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} </Button> <Button variant="ghost" size="icon" onClick={handleCancelEdit} disabled={isSavingRules}> <X className="h-4 w-4" /> </Button> </TableCell>
                         </>
                       ) : (
                         <>
-                          <TableCell>{formatCurrency(rule.revenue_threshold)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(rule.revenue_threshold)}</TableCell>
                           {/* @ts-ignore - 타입 오류 임시 무시 */}
-                          <TableCell>{rule.revenue_upper_bound ? `< ${formatCurrency(rule.revenue_upper_bound)}` : '없음'}</TableCell>
-                          <TableCell>{rule.commission_rate}%</TableCell> <TableCell>{formatCurrency(rule.incentive_amount)}</TableCell> {/* <TableCell>{formatCurrency(rule.team_incentive_amount)}</TableCell> */} {/* 팀 인센티브 표시 제거 */}
+                          <TableCell className="text-right">{rule.revenue_upper_bound ? `< ${formatCurrency(rule.revenue_upper_bound)}` : '없음'}</TableCell>
+                          <TableCell className="text-right">{rule.commission_rate}%</TableCell> <TableCell className="text-right">{formatCurrency(rule.incentive_amount)}</TableCell> {/* <TableCell>{formatCurrency(rule.team_incentive_amount)}</TableCell> */} {/* 팀 인센티브 표시 제거 */}
                           <TableCell className="text-right space-x-1">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditRule(rule)} disabled={isSavingRules || !!editingRuleId || isAddingNewRule || isAddingNewPriceRule || !!editingPriceRuleId}> <Edit className="h-4 w-4" /> </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" disabled={isSavingRules || !!editingRuleId || isAddingNewRule || isAddingNewPriceRule || !!editingPriceRuleId}>
@@ -449,7 +450,6 @@ const RevenueSettingsPage = () => {
                               </AlertDialogTrigger>
                               <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>정말 삭제하시겠습니까?</AlertDialogTitle> <AlertDialogDescription> 이 작업은 되돌릴 수 없습니다. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel>취소</AlertDialogCancel> <AlertDialogAction onClick={() => handleDeleteRule(rule.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90"> 삭제 </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
                             </AlertDialog>
-                            <Button variant="ghost" size="icon" onClick={() => handleEditRule(rule)} disabled={isSavingRules || !!editingRuleId || isAddingNewRule || isAddingNewPriceRule || !!editingPriceRuleId}> <Edit className="h-4 w-4" /> </Button>
                           </TableCell>
                         </>
                       )}
@@ -468,7 +468,9 @@ const RevenueSettingsPage = () => {
                 </TableBody>
               </Table>
             )}
-             <Button variant="outline" className="mt-4" onClick={handleAddNewRule} disabled={!!editingRuleId || isAddingNewRule || isAddingNewPriceRule || !!editingPriceRuleId}> <PlusCircle className="mr-2 h-4 w-4" /> 새 기준 추가 </Button>
+            <div className="mt-4 flex justify-end">
+             <Button variant="outline" onClick={handleAddNewRule} disabled={!!editingRuleId || isAddingNewRule || isAddingNewPriceRule || !!editingPriceRuleId}> <PlusCircle className="mr-2 h-4 w-4" /> 새 기준 추가 </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -478,21 +480,22 @@ const RevenueSettingsPage = () => {
           <CardContent>
             {isLoadingPriceRules ? ( <p>로딩 중...</p> ) : (
               <Table>
-                <TableHeader> <TableRow> <TableHead>최소 세션</TableHead> <TableHead>최대 세션 (미만)</TableHead> <TableHead>세션당 단가</TableHead> <TableHead className="text-right">액션</TableHead> </TableRow> </TableHeader>
+                <TableHeader> <TableRow> <TableHead className="text-right">최소 세션</TableHead> <TableHead className="text-right">최대 세션 (미만)</TableHead> <TableHead className="text-right">세션당 단가</TableHead> <TableHead className="text-right"><span className="sr-only">액션</span></TableHead> </TableRow> </TableHeader>
                 <TableBody>
                   {sessionPriceRules.map((rule) => (
                     <TableRow key={rule.id}>
                       {editingPriceRuleId === rule.id ? (
                         <>
-                          <TableCell> <Input type="text" value={formatNumberWithCommas(editingPriceRuleData.min_sessions)} onChange={(e) => handleTableNumericInputChange(rule.id, 'min_sessions', e.target.value)} className="h-8"/> </TableCell>
-                          <TableCell> <Input type="text" value={formatNumberWithCommas(editingPriceRuleData.max_sessions)} onChange={(e) => handleTableNumericInputChange(rule.id, 'max_sessions', e.target.value, false, undefined, true)} className="h-8" placeholder="없음"/> </TableCell>
-                          <TableCell> <Input type="text" value={formatNumberWithCommas(editingPriceRuleData.price_per_session)} onChange={(e) => handleTableNumericInputChange(rule.id, 'price_per_session', e.target.value)} className="h-8"/> </TableCell>
+                          <TableCell> <Input type="text" value={formatNumberWithCommas(editingPriceRuleData.min_sessions)} onChange={(e) => handleTableNumericInputChange(rule.id, 'min_sessions', e.target.value)} className="h-8 text-right"/> </TableCell>
+                          <TableCell> <Input type="text" value={formatNumberWithCommas(editingPriceRuleData.max_sessions)} onChange={(e) => handleTableNumericInputChange(rule.id, 'max_sessions', e.target.value, false, undefined, true)} className="h-8 text-right" placeholder="없음"/> </TableCell>
+                          <TableCell> <Input type="text" value={formatNumberWithCommas(editingPriceRuleData.price_per_session)} onChange={(e) => handleTableNumericInputChange(rule.id, 'price_per_session', e.target.value)} className="h-8 text-right"/> </TableCell>
                           <TableCell className="text-right space-x-1"> <Button variant="ghost" size="icon" onClick={() => handleSavePriceRule(rule.id)} disabled={isSavingPriceRules}> {isSavingPriceRules ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} </Button> <Button variant="ghost" size="icon" onClick={handleCancelEditPriceRule} disabled={isSavingPriceRules}> <X className="h-4 w-4" /> </Button> </TableCell>
                         </>
                       ) : (
                         <>
-                          <TableCell>{rule.min_sessions}회</TableCell> <TableCell>{rule.max_sessions ? `< ${rule.max_sessions}회` : '없음'}</TableCell> <TableCell>{formatCurrency(rule.price_per_session)}</TableCell>
+                          <TableCell className="text-right">{rule.min_sessions}회</TableCell> <TableCell className="text-right">{rule.max_sessions ? `< ${rule.max_sessions}회` : '없음'}</TableCell> <TableCell className="text-right">{formatCurrency(rule.price_per_session)}</TableCell>
                           <TableCell className="text-right space-x-1">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditPriceRule(rule)} disabled={isSavingPriceRules || !!editingPriceRuleId || isAddingNewPriceRule || isAddingNewRule || !!editingRuleId}> <Edit className="h-4 w-4" /> </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" disabled={isSavingPriceRules || !!editingPriceRuleId || isAddingNewPriceRule || isAddingNewRule || !!editingRuleId}>
@@ -501,7 +504,6 @@ const RevenueSettingsPage = () => {
                               </AlertDialogTrigger>
                               <AlertDialogContent> <AlertDialogHeader> <AlertDialogTitle>정말 삭제하시겠습니까?</AlertDialogTitle> <AlertDialogDescription> 이 작업은 되돌릴 수 없습니다. </AlertDialogDescription> </AlertDialogHeader> <AlertDialogFooter> <AlertDialogCancel>취소</AlertDialogCancel> <AlertDialogAction onClick={() => handleDeletePriceRule(rule.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90"> 삭제 </AlertDialogAction> </AlertDialogFooter> </AlertDialogContent>
                             </AlertDialog>
-                             <Button variant="ghost" size="icon" onClick={() => handleEditPriceRule(rule)} disabled={isSavingPriceRules || !!editingPriceRuleId || isAddingNewPriceRule || isAddingNewRule || !!editingRuleId}> <Edit className="h-4 w-4" /> </Button>
                           </TableCell>
                         </>
                       )}
@@ -518,7 +520,9 @@ const RevenueSettingsPage = () => {
                 </TableBody>
               </Table>
             )}
-             <Button variant="outline" className="mt-4" onClick={handleAddNewPriceRule} disabled={!!editingPriceRuleId || isAddingNewPriceRule || isAddingNewRule || !!editingRuleId}> <PlusCircle className="mr-2 h-4 w-4" /> 새 단가 기준 추가 </Button>
+            <div className="mt-4 flex justify-end">
+             <Button variant="outline" onClick={handleAddNewPriceRule} disabled={!!editingPriceRuleId || isAddingNewPriceRule || isAddingNewRule || !!editingRuleId}> <PlusCircle className="mr-2 h-4 w-4" /> 새 단가 기준 추가 </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

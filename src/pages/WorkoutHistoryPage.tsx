@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/carousel";
 import { useLocation } from 'react-router-dom';
 import { cn } from "@/lib/utils"; // cn 함수 import 추가
-import { SelectUserModal } from '@/components/features/SelectUserModal';
+import MemberSelector from '@/components/features/workout/MemberSelector';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Avatar import
 import { Badge } from '@/components/ui/badge'; // Badge 추가
 
@@ -66,7 +66,7 @@ interface WorkoutSet {
   set_number: number;
   weight: number | null;
   reps: number | null;
-  completed: boolean;
+  // completed: boolean; // 완료 여부 필드 제거
 }
 interface InitialMediaItem {
   storagePath: string;
@@ -285,7 +285,7 @@ const WorkoutHistoryPage = () => {
                               set_number: s.set_number,
                               weight: s.weight,
                               reps: s.reps,
-                              completed: s.completed ?? false,
+                              // completed: s.completed ?? false, // 완료 여부 필드 제거
                             }))
                         : [];
                       return {
@@ -403,8 +403,8 @@ const WorkoutHistoryPage = () => {
   }, [sessions, selectedMemberIdForFilter]);
 
   // 회원 선택 모달 콜백
-  const handleMemberSelectForFilter = (member: Member) => {
-    setSelectedMemberIdForFilter(member.id); // auth.users.id 저장
+  const handleMemberSelectForFilter = (memberId: string | null) => {
+    setSelectedMemberIdForFilter(memberId);
     setIsMemberModalOpen(false);
   };
 
@@ -548,14 +548,10 @@ const WorkoutHistoryPage = () => {
                                     .map((set) => (
                                     <div key={set.set_number} className="flex justify-between items-center">
                                       {/* 세트 번호와 상세 정보(kg/회/체크)를 한 줄에 배치 */}
-                                      <span className={`flex items-center gap-1 ${set.completed ? 'text-muted-foreground' : ''}`}>
+                                      <span className="flex items-center gap-1"> {/* completed 스타일에 따른 변경 제거 */}
                                         <span>{set.set_number}세트:</span>
                                         <span className="ml-2">{set.weight !== null ? `${set.weight}kg` : '-'} / {set.reps !== null ? `${set.reps}회` : '-'}</span>
-                                        {set.completed ? (
-                                          <CheckCircle2 className="h-4 w-4 text-green-500 ml-1" />
-                                        ) : (
-                                          <XCircle className="h-4 w-4 text-red-500 ml-1" />
-                                        )}
+                                        {/* 완료 아이콘 제거 */}
                                       </span>
                                     </div>
                                   ))}
@@ -650,10 +646,9 @@ const WorkoutHistoryPage = () => {
       </div>
 
       {/* 회원 선택 모달 */}
-      <SelectUserModal
-        isOpen={isMemberModalOpen}
-        onClose={() => setIsMemberModalOpen(false)}
-        onUserSelect={handleMemberSelectForFilter} // 필터용 핸들러 연결
+      <MemberSelector
+        selectedMemberId={selectedMemberIdForFilter}
+        onSelectMember={handleMemberSelectForFilter} // 필터용 핸들러 연결
       />
     </AppLayout>
   );

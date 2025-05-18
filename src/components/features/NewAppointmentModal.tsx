@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // useRef 추가
 import { HexAlphaColorPicker } from "react-colorful"; // 색상 선택기 import
 import { Input } from "@/components/ui/input"; // Input 추가
 import {
@@ -10,16 +10,18 @@ import {
   DialogClose,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Popover 추가
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { SelectUserModal } from '@/components/features/SelectUserModal';
-import { Member } from '@/hooks/use-members'; // Member 타입 직접 import
+import MemberSelector from '@/components/features/workout/MemberSelector';
+import { Member, useMembers } from '@/hooks/use-members'; // useMembers 다시 추가
+// import { useWorkoutStore } from '@/store/workoutStore'; // Zustand 스토어 사용 제거
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import DatePicker from '@/components/features/workout/DatePicker';
 import { SelectHourModal } from '@/components/features/workout/SelectHourModal'; // 시간 선택 모달 import
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { setHours, setMinutes, startOfDay } from 'date-fns';
+import { setHours, setMinutes, startOfDay, getHours, getMinutes, addMinutes } from 'date-fns'; // getHours, getMinutes, addMinutes 추가
 import { Loader2, Clock } from 'lucide-react';
 import { cn } from "@/lib/utils"; // cn 함수 import 추가
 
@@ -49,13 +51,26 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [appointmentDate, setAppointmentDate] = useState<Date | undefined>(new Date());
   const [startHour, setStartHour] = useState<number>(new Date().getHours()); // number 타입으로 변경
-  // durationMinutes 상태 제거
+  const [endHour, setEndHour] = useState<number>(getHours(addMinutes(setHours(new Date(), new Date().getHours()), 50)));
+  const [endMinute, setEndMinute] = useState<number>(0); // 분은 0으로 고정, 상태는 유지하되 UI에서 직접 수정 안 함
+  const [isEndTimeManuallySelected, setIsEndTimeManuallySelected] = useState(false);
+  // const [isEndTimePickerOpen, setIsEndTimePickerOpen] = useState(false); // SelectHourModal로 대체되므로 불필요
+
   const [appointmentType, setAppointmentType] = useState<"PT" | "상담" | "측정">("PT");
   const [notes, setNotes] = useState('');
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
-  const [isHourModalOpen, setIsHourModalOpen] = useState(false); // 시간 선택 모달 상태 추가
-  const [selectedColor, setSelectedColor] = useState<string>("#1d4ed8ff"); // 색상 상태 추가 (기본 파란색, 불투명)
+  const [isHourModalOpen, setIsHourModalOpen] = useState(false); // 시작 시간 모달용
+  const [isEndHourModalOpen, setIsEndHourModalOpen] = useState(false); // 종료 시간 모달용 상태 추가
+  // selectedColor, isColorPickerOpen, colorPickerTriggerRef 제거
   const [isSaving, setIsSaving] = useState(false);
+  const { members, isLoading: membersLoading } = useMembers(); // useMembers 다시 사용
+  // const {
+  //   members: workoutStoreMembers,
+  //   fetchMembers: fetchWorkoutStoreMembers,
+  //   isLoadingMembers,
+  //   memberError
+  // } = useWorkoutStore(); // useWorkoutStore 관련 제거
+  // const { userCenter } = useAuth(); // userCenter는 useMembers 내부에서 사용되므로 여기선 불필요
 
   // Reset state when modal opens
   useEffect(() => {
@@ -63,32 +78,100 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
       setSelectedMember(null);
       setAppointmentDate(new Date());
       setStartHour(new Date().getHours());
-      // durationMinutes 초기화 제거
+      const defaultStartTime = setHours(new Date(), new Date().getHours());
+      const defaultEndTime = addMinutes(defaultStartTime, appointmentType === "PT" ? 50 : 60);
+      setEndHour(getHours(defaultEndTime));
+      setEndMinute(0); // 분은 0으로 고정
+      setIsEndTimeManuallySelected(false);
       setAppointmentType('PT');
       setNotes('');
-      setSelectedColor("#1d4ed8ff"); // 색상 초기화
+      // setSelectedColor 제거
       setIsSaving(false);
     }
   }, [isOpen]);
 
-  const handleMemberSelect = (member: Member) => {
-    setSelectedMember(member);
-    setIsMemberModalOpen(false);
+  // selectedMember 상태 변경 시 로그 출력 (디버깅용)
+  useEffect(() => {
+    console.log('[NewAppointmentModal] selectedMember changed:', selectedMember);
+    if (selectedMember) {
+      console.log('[NewAppointmentModal] selectedMember.memberPk:', selectedMember.memberPk);
+    }
+  }, [selectedMember]);
+
+  const handleMemberSelect = (memberPk: string | null) => {
+    if (memberPk) {
+      const member = members.find(m => m.memberPk === memberPk);
+      setSelectedMember(member || null);
+    } else {
+      setSelectedMember(null);
+    }
+    // 선택 후 활성 요소에서 포커스 제거 시도 (setTimeout 사용)
+    setTimeout(() => {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    }, 0);
   };
 
   // 시간 선택 모달 콜백
-  const handleHourSelect = (hour: number) => {
+  const handleStartHourSelect = (hour: number) => {
     setStartHour(hour);
     setIsHourModalOpen(false);
+    // 시작 시간 변경 시, 수동으로 종료 시간을 설정하지 않았다면 종료 시간 자동 업데이트
+    if (!isEndTimeManuallySelected && appointmentDate) {
+      const newStartTime = setMinutes(setHours(startOfDay(appointmentDate), hour), 0);
+      const duration = appointmentType === "PT" ? 50 : 60;
+      const newEndTime = addMinutes(newStartTime, duration);
+      setEndHour(getHours(newEndTime));
+      setEndMinute(0); // 분은 0으로 고정
+    }
   };
+
+  const handleEndHourSelect = (hour: number) => {
+    setEndHour(hour);
+    // setEndMinute(0); // 분은 별도 Select로 선택하므로 여기서 0으로 고정하지 않음
+    setIsEndHourModalOpen(false);
+    setIsEndTimeManuallySelected(true);
+    if (hour < startHour || (hour === startHour && endMinute <= 0)) {
+      setStartHour(hour - 1 < 0 ? 0 : hour - 1);
+    }
+  };
+
+  const handleEndMinuteSelect = (minute: number) => { // handleEndMinuteSelect 함수 다시 추가
+    setEndMinute(minute);
+    setIsEndTimeManuallySelected(true);
+     if (startHour === endHour && 0 >= minute) {
+        if (minute === 0) {
+             setStartHour(startHour - 1 < 0 ? 0 : startHour -1);
+        }
+    }
+  };
+
+  // appointmentType 변경 시 종료 시간 자동 업데이트
+  useEffect(() => {
+    if (!isEndTimeManuallySelected && appointmentDate) {
+      const currentStartTime = setMinutes(setHours(startOfDay(appointmentDate), startHour), 0);
+      const duration = appointmentType === "PT" ? 50 : 60; // PT 50분, 상담/측정 60분으로 가정
+      const newEndTime = addMinutes(currentStartTime, duration);
+      setEndHour(getHours(newEndTime));
+      setEndMinute(getMinutes(newEndTime)); // 계산된 분으로 설정
+    }
+  }, [appointmentType, startHour, appointmentDate, isEndTimeManuallySelected]);
+
 
   const calculateTimes = (): { startTime: Date | null; endTime: Date | null } => {
     if (!appointmentDate) return { startTime: null, endTime: null };
     try {
-      // appointmentDate의 시간 부분을 무시하고 startHour로 설정
-      const start = setMinutes(setHours(startOfDay(appointmentDate), startHour), 0); // startOfDay 추가
-      const end = new Date(start.getTime() + 60 * 60000); // duration 60분 고정
-      console.log('[calculateTimes] Calculated Start:', start, 'End:', end); // 디버깅 로그 추가
+      const start = setMinutes(setHours(startOfDay(appointmentDate), startHour), 0);
+      let end = setMinutes(setHours(startOfDay(appointmentDate), endHour), endMinute); // endMinute 사용 (현재는 0)
+      
+      // 만약 계산된 end 시간이 start 시간보다 이전이거나 같으면, start 시간에 duration을 더한 값으로 설정
+      if (end <= start) {
+        const durationMinutes = appointmentType === "PT" ? 50 : 60;
+        end = addMinutes(start, durationMinutes);
+        console.warn("Calculated end time was before or same as start time. Adjusted end time.");
+      }
+      console.log('[calculateTimes] Calculated Start:', start, 'End:', end);
       return { startTime: start, endTime: end };
     } catch (e) {
       console.error("Error calculating times:", e);
@@ -117,7 +200,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
       endTime: endTime.toISOString(),     // Convert to ISO string (UTC)
       type: appointmentType,
       notes,
-      backgroundColor: selectedColor,
+      // backgroundColor 제거 (AppointmentData 인터페이스에서 optional이므로 전달 안 함)
     };
     try {
       await onSave(data);
@@ -151,24 +234,11 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                 회원
               </Label>
               <div className="col-span-3">
-                <Button
-                  id="member-select-button" // ID 추가
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal h-10"
-                  onClick={() => setIsMemberModalOpen(true)}
-                >
-                  {selectedMember ? (
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={selectedMember.avatarUrl ?? undefined} />
-                        <AvatarFallback>{selectedMember.initials}</AvatarFallback>
-                      </Avatar>
-                      <span>{selectedMember.name}</span>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">회원을 선택하세요</span>
-                  )}
-                </Button>
+                {/* Button 대신 MemberSelector 직접 사용 */}
+                <MemberSelector
+                  selectedMemberId={selectedMember ? selectedMember.memberPk : null} // MemberSelector에는 members 테이블 PK 전달
+                  onSelectMember={handleMemberSelect}
+                />
               </div>
             </div>
 
@@ -187,19 +257,45 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
               <Label htmlFor="start-time-button" className="text-right">
                 시작 시간
               </Label>
-              <div className="col-span-3"> {/* col-span-2 -> col-span-3 */}
-                {/* 시작 시간 선택 버튼 */}
+              <div className="col-span-3">
                 <Button
-                  id="start-time-button" // ID 추가
+                  id="start-time-button"
                   variant="outline"
-                  className="w-full justify-start text-left font-normal h-10"
+                  className="w-full justify-start text-left font-normal h-10 px-3" // px-3 추가하여 버튼 내부 패딩과 유사하게
                   onClick={() => setIsHourModalOpen(true)}
                 >
-                  <Clock className="mr-2 h-4 w-4" />
-                  {String(startHour).padStart(2, '0')}:00
+                  <Clock className="mr-2 h-4 w-4" /> {/* opacity-50 제거 */}
+                  {String(startHour).padStart(2, '0')}시
                 </Button>
               </div>
-              {/* Duration Select 제거 */}
+            </div>
+
+            {/* End Time Selection */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="end-time-hour-select" className="text-right">
+                종료 시간
+              </Label>
+              <div className="col-span-3 grid grid-cols-2 gap-2"> {/* EditAppointmentModal과 동일한 구조 */}
+                <Button
+                  id="end-time-hour-button" // ID 변경 (SelectTrigger와 구분)
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal h-10 px-3"
+                  onClick={() => setIsEndHourModalOpen(true)}
+                >
+                  <Clock className="mr-2 h-4 w-4" />
+                  {String(endHour).padStart(2, '0')}시
+                </Button>
+                <Select value={String(endMinute)} onValueChange={(value) => handleEndMinuteSelect(Number(value))}>
+                  <SelectTrigger className="w-full h-10 justify-start text-left font-normal px-3">
+                     <SelectValue placeholder="분" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[0, 10, 15, 20, 30, 40, 45, 50].map(min => (
+                      <SelectItem key={`end-min-${min}`} value={String(min)}>{String(min).padStart(2, '0')}분</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
              {/* Appointment Type */}
@@ -213,7 +309,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                      <SelectValue placeholder="종류 선택" />
                    </SelectTrigger>
                    <SelectContent>
-                     <SelectItem value="PT">PT (60분)</SelectItem> {/* 시간 명시 */}
+                     <SelectItem value="PT">PT</SelectItem>
                      <SelectItem value="상담">상담</SelectItem>
                      <SelectItem value="측정">측정</SelectItem>
                    </SelectContent>
@@ -235,23 +331,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
               />
             </div>
 
-            {/* 배경색 선택 */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="backgroundColor" className="text-right">배경색</Label>
-              <div className="col-span-3 flex flex-col gap-2">
-                <HexAlphaColorPicker color={selectedColor} onChange={setSelectedColor} style={{ width: '100%', height: '150px' }}/>
-                <div className="flex items-center gap-2 mt-2"> {/* mt-2 추가 */}
-                  <div className="w-8 h-8 rounded border flex-shrink-0" style={{ backgroundColor: selectedColor }}></div>
-                  <Input
-                    id="backgroundColorInput"
-                    value={selectedColor}
-                    onChange={(e) => setSelectedColor(e.target.value)}
-                    placeholder="#RRGGBBAA"
-                    className="flex-grow"
-                  />
-                </div>
-              </div>
-            </div>
+            {/* 배경색 선택 UI 제거 */}
           </div>
           <DialogFooter className={cn(
             "pt-4",
@@ -272,19 +352,23 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Member Selection Modal */}
-      <SelectUserModal
-        isOpen={isMemberModalOpen}
-        onClose={() => setIsMemberModalOpen(false)}
-        onUserSelect={handleMemberSelect}
-      />
+      {/* MemberSelector를 Dialog로 감싸는 부분 제거 (이미 위에서 직접 사용) */}
 
       {/* Hour Selection Modal */}
       <SelectHourModal
-        isOpen={isHourModalOpen}
+        isOpen={isHourModalOpen} // 시작 시간 모달은 isHourModalOpen 상태 사용
         onClose={() => setIsHourModalOpen(false)}
-        onHourSelect={handleHourSelect}
+        onHourSelect={handleStartHourSelect}
         currentHour={startHour}
+      />
+
+      {/* End Hour Selection Modal */}
+      <SelectHourModal
+        isOpen={isEndHourModalOpen} // 종료 시간 모달은 isEndHourModalOpen 상태 사용
+        onClose={() => setIsEndHourModalOpen(false)}
+        onHourSelect={handleEndHourSelect}
+        currentHour={endHour}
+        minHour={startHour === endHour ? startHour : (startHour + 1 > 23 ? undefined : startHour + 1)}
       />
     </>
   );

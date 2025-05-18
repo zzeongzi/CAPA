@@ -20,12 +20,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+// Dialog import 제거
 import { Loader2, User, Clock, ChevronLeft, ChevronRight } from 'lucide-react'; // ChevronRight 추가
 import type SwiperCore from 'swiper';
 import { v4 as uuidv4 } from 'uuid';
 import { Database } from '@/integrations/supabase/types';
 import { format, setHours, setMinutes, getHours, parseISO } from 'date-fns';
-import { SelectUserModal } from '@/components/features/SelectUserModal';
+import MemberSelector from '@/components/features/workout/MemberSelector';
 import { SelectHourModal } from '@/components/features/workout/SelectHourModal';
 import { useMembers, Member } from '@/hooks/use-members';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -169,7 +170,7 @@ const WorkoutPageMobile = () => {
     } catch (error) { return null; }
   };
 
-  const handleMemberSelect = (member: Member) => { setSelectedMemberId(member.id); setIsMemberModalOpen(false); };
+  const handleMemberSelect = (memberId: string | null) => { setSelectedMemberId(memberId); setIsMemberModalOpen(false); };
   const handleHourSelect = (hour: number) => { setSessionHour(hour); setIsHourModalOpen(false); };
 
   const handleSaveWorkout = async () => {
@@ -291,14 +292,13 @@ const WorkoutPageMobile = () => {
             <div className="flex flex-col gap-3 mt-3"> {/* 모바일 수직, 간격 조정 */}
               <div className="flex-1">
                  <Label>회원</Label>
-                 <Button variant="outline" className="w-full justify-start text-left font-normal mt-1 h-10 text-sm" onClick={() => setIsMemberModalOpen(true)}>
-                   {selectedMember ? (
-                     <div className="flex items-center gap-2">
-                       <Avatar className="h-6 w-6"><AvatarImage src={selectedMember.avatarUrl ?? undefined} /><AvatarFallback>{selectedMember.initials}</AvatarFallback></Avatar>
-                       <span>{selectedMember.name}</span>
-                     </div>
-                   ) : ( <span className="text-muted-foreground">회원을 선택하세요</span> )}
-                 </Button>
+                 {/* Button 대신 MemberSelector 직접 사용 */}
+                 <div className="mt-1">
+                   <MemberSelector
+                     selectedMemberId={selectedMemberId}
+                     onSelectMember={handleMemberSelect}
+                   />
+                 </div>
               </div>
               <div className="flex flex-1 gap-2 items-end">
                  <div className="flex-1">
@@ -351,7 +351,8 @@ const WorkoutPageMobile = () => {
         </div>
       </div>
 
-      <SelectUserModal isOpen={isMemberModalOpen} onClose={() => setIsMemberModalOpen(false)} onUserSelect={handleMemberSelect} />
+      {/* MemberSelector를 Dialog로 감싸는 부분 제거 (이미 위에서 직접 사용) */}
+
       <SelectHourModal isOpen={isHourModalOpen} onClose={() => setIsHourModalOpen(false)} onHourSelect={handleHourSelect} currentHour={sessionHour} />
       <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <AlertDialogContent>

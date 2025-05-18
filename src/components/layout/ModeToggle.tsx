@@ -1,4 +1,4 @@
-import { Moon, Sun, Laptop } from "lucide-react"; // Laptop 아이콘 추가
+import { Moon, Sun } from "lucide-react"; // Laptop 아이콘 제거
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
@@ -17,11 +17,10 @@ export function ModeToggle() {
 
   // 순환 토글 함수
   const toggleTheme = () => {
+    // "light" -> "dark" -> "light" 순환
     if (theme === "light") {
       setTheme("dark");
-    } else if (theme === "dark") {
-      setTheme("system");
-    } else { // theme === "system" 또는 초기 상태
+    } else { // theme === "dark" 또는 theme === "system" (이제 system은 설정되지 않음)
       setTheme("light");
     }
   };
@@ -33,7 +32,7 @@ export function ModeToggle() {
   }
 
   return (
-    <Button variant="outline" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+    <Button variant="outline" size="icon" onClick={toggleTheme} aria-label="Toggle theme"> {/* className="h-6 w-6" 제거 */}
       {/* 현재 테마에 따라 아이콘 변경 */}
       {theme === "light" && (
         <Sun className="h-[1.2rem] w-[1.2rem] transition-all" />
@@ -41,9 +40,7 @@ export function ModeToggle() {
       {theme === "dark" && (
         <Moon className="h-[1.2rem] w-[1.2rem] transition-all" />
       )}
-      {theme === "system" && (
-        <Laptop className="h-[1.2rem] w-[1.2rem] transition-all" />
-      )}
+      {/* theme === "system" 조건 제거 */}
       <span className="sr-only">Toggle theme</span>
     </Button>
   );

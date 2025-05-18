@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom'; // useLocation 추가
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ interface BodyCompositionLog {
 
 export function BodyCompositionPage() {
   const { user, userCenter } = useAuth();
+  const location = useLocation(); // useLocation 사용
   const { toast } = useToast(); // 토스트 훅 사용
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
@@ -86,6 +88,27 @@ export function BodyCompositionPage() {
     };
     fetchMembers();
   }, [userCenter, toast]);
+
+  // Handle member selection from navigation state
+  useEffect(() => {
+    const state = location.state as { selectedMember?: { id?: string } }; // ptSessionId는 아직 사용 안 함
+    if (state?.selectedMember?.id && members.length > 0) {
+      const memberExists = members.some(m => m.id === state.selectedMember.id);
+      if (memberExists) {
+        setSelectedMemberId(state.selectedMember.id);
+        // Clear location state after using it
+        window.history.replaceState({}, document.title)
+      } else {
+        console.warn(`Member with id ${state.selectedMember.id} not found in the members list.`);
+        toast({
+          title: "알림",
+          description: "선택된 회원을 찾을 수 없습니다. 목록에서 직접 선택해주세요.",
+          variant: "default",
+        });
+      }
+    }
+  }, [location.state, members, toast]);
+
 
   // Fetch recent logs for the selected member
   const fetchRecentLogs = useCallback(async (memberId: string) => {

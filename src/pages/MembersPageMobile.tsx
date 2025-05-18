@@ -65,21 +65,21 @@ interface MemberListItemProps {
   member: Member;
   onOpenEditModal: (member: Member) => void;
   onOpenDeleteDialog: (member: Member) => void;
-  onAddMyMember?: (member: Member) => void; // Mobile에서는 이 기능이 다를 수 있음
-  isCheckboxMode?: boolean; // Mobile에서는 이 기능이 다를 수 있음
-  isSelected?: boolean; // Mobile에서는 이 기능이 다를 수 있음
-  onSelectMember?: (memberId: string) => void; // Mobile에서는 이 기능이 다를 수 있음
-  onLongPress?: (memberId: string) => void; // Mobile에서는 클릭으로 대체 가능
-  isMyMemberView?: boolean;
-  handleRemoveMyMember?: (memberId: string) => void;
+  // onAddMyMember?: (member: Member) => void;
+  // isCheckboxMode?: boolean;
+  // isSelected?: boolean;
+  // onSelectMember?: (memberId: string) => void;
+  // onLongPress?: (memberId: string) => void;
+  // isMyMemberView?: boolean;
+  // handleRemoveMyMember?: (memberId: string) => void;
 }
 
 const MemberListItem = ({
   member,
   onOpenEditModal,
   onOpenDeleteDialog,
-  isMyMemberView = false,
-  handleRemoveMyMember,
+  // isMyMemberView = false, // 제거
+  // handleRemoveMyMember, // 제거
 }: MemberListItemProps): React.ReactElement => {
   const navigate = useNavigate();
   const [isCreatingChat, setIsCreatingChat] = useState(false);
@@ -108,13 +108,7 @@ const MemberListItem = ({
 
   return (
     <Card className={`relative transition-colors duration-150 hover:bg-muted/50 h-full ${member.remainingSessions === 0 ? 'card-border-red' : member.remainingSessions != null && member.remainingSessions <= 5 ? 'card-pulse-orange' : ''}`}>
-      {isMyMemberView && handleRemoveMyMember ? (
-         <div className="absolute top-2 right-2 z-10">
-           <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleRemoveMyMember(member.id); }} className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90 p-1 h-auto flex-shrink-0">
-             <Trash2 className="h-4 w-4" /> <span className="sr-only">나의 회원에서 제거</span>
-           </Button>
-         </div>
-      ) : (
+      {/* isMyMemberView 및 handleRemoveMyMember 관련 UI 제거하고 항상 DropdownMenu 표시 */}
         <div className="absolute top-2 right-2 z-10">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -129,7 +123,6 @@ const MemberListItem = ({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      )}
       <CardHeader className="flex flex-row items-center space-y-0 pb-2 pt-4 px-4">
         <div className="flex items-center gap-3 overflow-hidden">
           <Avatar className="h-10 w-10 flex-shrink-0"> <AvatarImage src={member.avatarUrl} alt={member.name} /> <AvatarFallback>{member.initials}</AvatarFallback> </Avatar>
@@ -149,7 +142,7 @@ const MemberListItem = ({
 const MembersPageMobile = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-  const [myMembers, setMyMembers] = useState<Member[]>([]);
+  // const [myMembers, setMyMembers] = useState<Member[]>([]); // "나의 회원" 관련 상태 제거
   const { members, isLoading, refetchMembers, removeMemberLocally } = useMembers();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -161,34 +154,17 @@ const MembersPageMobile = () => {
   const { user } = useAuth();
   const [filterCriteria, setFilterCriteria] = useState<{ status: 'all' | 'active' | 'inactive'; plan: 'all' | string }>({ status: 'all', plan: 'all' });
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
-  const [mainTab, setMainTab] = useState<'allMembers' | 'myMembers'>('myMembers');
-  const [myMembersSearchQuery, setMyMembersSearchQuery] = useState("");
-  const [myMembersActiveTab, setMyMembersActiveTab] = useState("active");
-  const [myMembersFilterCriteria, setMyMembersFilterCriteria] = useState<{ status: 'all' | 'active' | 'inactive'; plan: 'all' | string }>({ status: 'all', plan: 'all' });
+  const [mainTab, setMainTab] = useState<'allMembers'>('allMembers'); // 기본 "allMembers"
+  // const [myMembersSearchQuery, setMyMembersSearchQuery] = useState(""); // "나의 회원" 관련 상태 제거
+  // const [myMembersActiveTab, setMyMembersActiveTab] = useState("active"); // "나의 회원" 관련 상태 제거
+  // const [myMembersFilterCriteria, setMyMembersFilterCriteria] = useState<{ status: 'all' | 'active' | 'inactive'; plan: 'all' | string }>({ status: 'all', plan: 'all' }); // "나의 회원" 관련 상태 제거
 
   // 모바일에서는 정렬 기능 단순화 또는 제거 가능 (우선 유지)
   const [sortConfig, setSortConfig] = useState<{ key: keyof Member | null; direction: 'ascending' | 'descending' }>({ key: 'name', direction: 'ascending' });
-  const [myMembersSortConfig, setMyMembersSortConfig] = useState<{ key: keyof Member | null; direction: 'ascending' | 'descending' }>({ key: 'name', direction: 'ascending' });
+  // const [myMembersSortConfig, setMyMembersSortConfig] = useState<{ key: keyof Member | null; direction: 'ascending' | 'descending' }>({ key: 'name', direction: 'ascending' }); // "나의 회원" 관련 상태 제거
 
 
-  useEffect(() => {
-    const fetchMyMembers = async () => {
-      if (!user) return;
-      try {
-        const { data: myMemberRelations, error: relationError } = await supabase
-          .from('my_trainer_members')
-          .select('member_id')
-          .eq('trainer_id', user.id);
-        if (relationError) throw relationError;
-        const myMemberPks = new Set(myMemberRelations.map(rel => rel.member_id));
-        const initialMyMembers = members.filter(member => myMemberPks.has(member.memberPk));
-        setMyMembers(initialMyMembers);
-      } catch (error: any) {
-        toast({ title: "오류", description: "나의 회원 목록 로딩 오류", variant: "destructive" });
-      }
-    };
-    if (user && !isLoading && members.length > 0) { fetchMyMembers(); }
-  }, [user, isLoading, members, toast]);
+  // "나의 회원" 관련 useEffect 제거
 
   const filteredMembers = useMemo(() => {
     return members.filter((member) => {
@@ -216,26 +192,7 @@ const MembersPageMobile = () => {
     return sortableMembers;
   }, [filteredMembers, sortConfig]);
 
-  const sortedMyMembers = useMemo(() => {
-    const filtered = myMembers.filter((member) => {
-      const matchesSearch = myMembersSearchQuery === '' || member.name.toLowerCase().includes(myMembersSearchQuery.toLowerCase()) || (member.phone && member.phone.includes(myMembersSearchQuery));
-      const matchesTab = myMembersActiveTab === "all" || (myMembersActiveTab === "active" && member.status === "active") || (myMembersActiveTab === "inactive" && member.status === "inactive");
-      const matchesStatusFilter = myMembersFilterCriteria.status === 'all' || member.status === myMembersFilterCriteria.status;
-      const matchesPlanFilter = myMembersFilterCriteria.plan === 'all' || (member.plan && member.plan === myMembersFilterCriteria.plan);
-      return matchesSearch && matchesTab && matchesStatusFilter && matchesPlanFilter;
-    });
-    let sortableMyMembers = [...filtered];
-    if (myMembersSortConfig.key !== null) {
-      sortableMyMembers.sort((a, b) => {
-        const aValue = a[myMembersSortConfig.key!]; const bValue = b[myMembersSortConfig.key!];
-        if (aValue == null && bValue == null) return 0; if (aValue == null) return 1; if (bValue == null) return -1;
-        if (typeof aValue === 'string' && typeof bValue === 'string') { const comp = aValue.localeCompare(bValue, 'ko'); return myMembersSortConfig.direction === 'ascending' ? comp : -comp; }
-        else if (typeof aValue === 'number' && typeof bValue === 'number') { return myMembersSortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue; }
-        else { if (String(aValue) < String(bValue)) return myMembersSortConfig.direction === 'ascending' ? -1 : 1; if (String(aValue) > String(bValue)) return myMembersSortConfig.direction === 'ascending' ? 1 : -1; return 0;}
-      });
-    }
-    return sortableMyMembers;
-  }, [myMembers, myMembersSearchQuery, myMembersActiveTab, myMembersFilterCriteria, myMembersSortConfig]);
+  // "나의 회원" 관련 sortedMyMembers 제거
 
   const allMembersCounts = useMemo(() => {
     const baseFiltered = members.filter((member) => {
@@ -247,15 +204,7 @@ const MembersPageMobile = () => {
     return { total: baseFiltered.length, active: baseFiltered.filter(m => m.status === 'active').length, inactive: baseFiltered.filter(m => m.status === 'inactive').length };
   }, [members, searchQuery, filterCriteria]);
 
-  const myMembersCounts = useMemo(() => {
-    const baseFiltered = myMembers.filter((member) => {
-      const matchesSearch = myMembersSearchQuery === '' || member.name.toLowerCase().includes(myMembersSearchQuery.toLowerCase()) || (member.phone && member.phone.includes(myMembersSearchQuery));
-      const matchesStatusFilter = myMembersFilterCriteria.status === 'all' || member.status === myMembersFilterCriteria.status;
-      const matchesPlanFilter = myMembersFilterCriteria.plan === 'all' || (member.plan && member.plan === myMembersFilterCriteria.plan);
-      return matchesSearch && matchesStatusFilter && matchesPlanFilter;
-    });
-    return { total: baseFiltered.length, active: baseFiltered.filter(m => m.status === 'active').length, inactive: baseFiltered.filter(m => m.status === 'inactive').length };
-  }, [myMembers, myMembersSearchQuery, myMembersFilterCriteria]);
+  // "나의 회원" 관련 myMembersCounts 제거
 
   const handleRegisterNewMember = () => { navigate("/members/new"); };
   const handleOpenEditModal = (member: Member) => { setEditingMember(member); setIsModalOpen(true); };
@@ -263,42 +212,7 @@ const MembersPageMobile = () => {
   const handleUpdateSuccess = () => { refetchMembers(); toast({ title: "성공", description: "PT 횟수가 업데이트되었습니다." }); };
   const handleOpenDeleteDialog = (member: Member) => { setDeletingMember(member); setIsDeleteDialogOpen(true); };
 
-  const handleRemoveMyMember = async (memberId: string) => {
-    if (!user) return;
-    const memberToRemove = myMembers.find(m => m.id === memberId);
-    if (!memberToRemove) {
-        toast({ title: "오류", description: "제거할 회원 정보를 찾을 수 없습니다.", variant: "destructive" });
-        return;
-    }
-
-    const trainerId = user.id;
-    const memberPkToRemove = memberToRemove.memberPk; // members 테이블의 PK
-
-    if (!memberPkToRemove) {
-        toast({ title: "오류", description: "회원 고유 ID(PK)를 찾을 수 없어 '나의 회원'에서 제거할 수 없습니다.", variant: "destructive" });
-        return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('my_trainer_members')
-        .delete()
-        .match({ trainer_id: trainerId, member_id: memberPkToRemove });
-
-      if (error) throw error;
-
-      setMyMembers(prevMyMembers => prevMyMembers.filter(member => member.id !== memberId));
-      toast({ title: "성공", description: `${memberToRemove.name} 회원을 나의 회원 목록에서 제거했습니다.` });
-
-    } catch (error: any) {
-      console.error("Error removing my member:", error);
-      toast({
-        title: "오류",
-        description: `나의 회원 제거 중 오류가 발생했습니다: ${error.message}`,
-        variant: "destructive",
-      });
-    }
-  };
+  // "나의 회원" 관련 handleRemoveMyMember 제거
 
   const handleDeleteConfirm = async () => {
     if (!deletingMember) return;
@@ -331,11 +245,11 @@ const MembersPageMobile = () => {
           </Button>
         </div>
 
-        <Tabs value={mainTab} onValueChange={(value) => setMainTab(value as 'allMembers' | 'myMembers')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
+        <Tabs value={mainTab} onValueChange={(value) => setMainTab(value as 'allMembers')} className="w-full">
+          {/* <TabsList className="grid w-full grid-cols-2 mb-4"> // "나의 회원" 탭 제거
             <TabsTrigger value="allMembers">전체 회원</TabsTrigger>
             <TabsTrigger value="myMembers">나의 회원</TabsTrigger>
-          </TabsList>
+          </TabsList> */}
 
           {/* 전체 회원 탭 */}
           <TabsContent value="allMembers">
@@ -409,69 +323,7 @@ const MembersPageMobile = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="myMembers">
-             <Card className="shadow-none border-0 sm:border sm:shadow-sm">
-              <CardHeader className="p-0 sm:p-6 sm:pb-2">
-                <div className="flex flex-col gap-2 mb-2 sm:mb-0 sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle className="text-lg sm:text-xl">나의 회원 목록</CardTitle>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <div className="relative flex-grow">
-                      <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input placeholder="이름, 전화번호 검색..." className="pl-8 w-full h-9" value={myMembersSearchQuery} onChange={(e) => setMyMembersSearchQuery(e.target.value)} />
-                    </div>
-                    <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
-                      <SheetTrigger asChild>
-                        <Button variant="outline" size="icon" className="flex-shrink-0 h-9 w-9"> <Filter className="h-4 w-4" /> </Button>
-                      </SheetTrigger>
-                      <SheetContent side="right" className="w-[280px] sm:w-[400px]">
-                        <SheetHeader><SheetTitle>필터</SheetTitle></SheetHeader>
-                        {/* 필터 내용 동일 */}
-                         <div className="py-4 space-y-4">
-                          <div>
-                            <h3 className="text-sm font-medium mb-2">상태</h3>
-                            <ToggleGroup type="single" value={myMembersFilterCriteria.status} onValueChange={(value) => { if (value) setMyMembersFilterCriteria(prev => ({ ...prev, status: value as 'all' | 'active' | 'inactive' })); }} className="grid grid-cols-3 gap-2">
-                              <ToggleGroupItem value="all" className="flex-1">전체</ToggleGroupItem>
-                              <ToggleGroupItem value="active" className="flex-1">활성</ToggleGroupItem>
-                              <ToggleGroupItem value="inactive" className="flex-1">비활성</ToggleGroupItem>
-                            </ToggleGroup>
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-medium mb-2">플랜</h3>
-                            <ToggleGroup type="single" value={myMembersFilterCriteria.plan} onValueChange={(value) => { if (value) setMyMembersFilterCriteria(prev => ({ ...prev, plan: value })); }} className="grid grid-cols-3 gap-2">
-                              <ToggleGroupItem value="all" className="flex-1">전체</ToggleGroupItem>
-                              <ToggleGroupItem value="Standard" className="flex-1">Standard</ToggleGroupItem>
-                              <ToggleGroupItem value="Premium" className="flex-1">Premium</ToggleGroupItem>
-                            </ToggleGroup>
-                          </div>
-                          <SheetClose asChild><Button className="w-full mt-4">적용</Button></SheetClose>
-                        </div>
-                      </SheetContent>
-                    </Sheet>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0 sm:p-6">
-                <Tabs value={myMembersActiveTab} onValueChange={setMyMembersActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 mb-4">
-                    <TabsTrigger value="all">전체 {myMembersCounts.total}</TabsTrigger>
-                    <TabsTrigger value="active">활성 {myMembersCounts.active}</TabsTrigger>
-                    <TabsTrigger value="inactive">비활성 {myMembersCounts.inactive}</TabsTrigger>
-                  </TabsList>
-                  {isLoading ? (
-                    <div className="flex justify-center items-center py-10"> <Loader2 className="h-8 w-8 animate-spin text-primary" /> </div>
-                  ) : sortedMyMembers.length === 0 ? (
-                    (<p className="text-muted-foreground text-center py-4">나의 회원이 없습니다.</p>)
-                  ) : (
-                    (<div className={`grid gap-4 py-1 ${gridColsClass}`}>
-                      {sortedMyMembers.map(member => (
-                        <MemberListItem key={`my-${member.id}`} member={member} onOpenEditModal={handleOpenEditModal} onOpenDeleteDialog={handleOpenDeleteDialog} handleRemoveMyMember={handleRemoveMyMember} isMyMemberView={true} />
-                      ))}
-                    </div>)
-                  )}
-                </Tabs>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* "나의 회원" TabsContent 제거 */}
         </Tabs>
 
         <EditPTSessionsModal isOpen={isModalOpen} onClose={handleCloseModal} member={editingMember} onUpdateSuccess={handleUpdateSuccess} />

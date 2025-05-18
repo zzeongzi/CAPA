@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import {
   BarChart,
   Users,
-  MessageSquare,
   Calendar,
   Dumbbell,
   User,
@@ -14,13 +13,20 @@ import {
   Cog,
   ClipboardList,
   TrendingUp, // 시뮬레이터 아이콘 추가
+  HelpCircle,
+  MessageSquareText, // 기존 아이콘
+  MessageSquare, // 상담 관리용 아이콘 추가
+  Megaphone, // 개발자용 공지사항 관리 아이콘
+  Info, // 일반 사용자용 공지사항 아이콘 (예시)
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function AppSidebar() {
   const { pathname } = useLocation();
-  const { userRole } = useAuth();
-  const { setOpenMobile, isMobile } = useSidebar(); // useSidebar 사용
+  const { userRole, loading: authLoading } = useAuth(); // authLoading 추가
+  const { setOpenMobile, isMobile } = useSidebar();
+
+  console.log('[AppSidebar] Rendering - userRole:', userRole, 'authLoading:', authLoading); // 로그 추가
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -55,7 +61,7 @@ export function AppSidebar() {
                 onClick={handleLinkClick}
               >
                 <BarChart className="mr-2 h-4 w-4" />
-                대시보드
+                홈
               </Button>
             </Link>
 
@@ -73,17 +79,6 @@ export function AppSidebar() {
               </Link>
             )}
 
-            <Link to="/chat">
-              <Button
-                variant={isActive("/chat") ? "default" : "ghost"}
-                className="w-full justify-start"
-                onClick={handleLinkClick}
-              >
-                <MessageSquare className="mr-2 h-4 w-4" />
-                메시지
-              </Button>
-            </Link>
-
             <Link to="/schedule">
               <Button
                 variant={isActive("/schedule") ? "default" : "ghost"}
@@ -94,6 +89,20 @@ export function AppSidebar() {
                 일정 관리
               </Button>
             </Link>
+
+            {/* 상담 관리 메뉴 (트레이너 역할에만 표시) */}
+            {userRole === "trainer" && (
+              <Link to="/consultation">
+                <Button
+                  variant={isActive("/consultation") ? "default" : "ghost"}
+                  className="w-full justify-start"
+                  onClick={handleLinkClick}
+                >
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  상담 관리
+                </Button>
+              </Link>
+            )}
 
             <Link to="/workout">
               <Button
@@ -204,9 +213,57 @@ export function AppSidebar() {
                    매출 설정
                  </Button>
                </Link>
-            </div>
+               <Link to="/feedback">
+                 <Button
+                   variant={isActive("/feedback") ? "default" : "ghost"}
+                   className="w-full justify-start"
+                   onClick={handleLinkClick}
+                 >
+                   <HelpCircle className="mr-2 h-4 w-4" />
+                   피드백 보내기
+                 </Button>
+               </Link>
+               {/* 일반 사용자용 공지사항 메뉴 */}
+               {userRole !== "developer" && (
+                 <Link to="/announcements">
+                   <Button
+                     variant={isActive("/announcements") ? "default" : "ghost"}
+                     className="w-full justify-start"
+                     onClick={handleLinkClick}
+                   >
+                     <Info className="mr-2 h-4 w-4" /> {/* 또는 ClipboardList */}
+                     공지사항
+                   </Button>
+                 </Link>
+               )}
+               {/* 개발자용 메뉴 */}
+               {userRole === "developer" && (
+                 <>
+                   <Link to="/admin/announcements">
+                     <Button
+                       variant={isActive("/admin/announcements") ? "default" : "ghost"}
+                       className="w-full justify-start"
+                       onClick={handleLinkClick}
+                     >
+                       <Megaphone className="mr-2 h-4 w-4" />
+                       공지사항 관리
+                     </Button>
+                   </Link>
+                   <Link to="/admin/feedbacks">
+                     <Button
+                       variant={isActive("/admin/feedbacks") ? "default" : "ghost"}
+                       className="w-full justify-start"
+                       onClick={handleLinkClick}
+                     >
+                       <MessageSquareText className="mr-2 h-4 w-4" />
+                       피드백 관리
+                     </Button>
+                   </Link>
+                 </>
+               )}
           </div>
-        </div>
+         </div>
+       </div>
       </SidebarContent>
     </Sidebar>
   );

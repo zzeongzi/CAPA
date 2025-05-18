@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { Session, User, UserMetadata } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import type { Database } from '@/integrations/supabase/types';
 
 interface AuthContextType {
   session: Session | null;
@@ -10,9 +11,10 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any | null }>;
   signUp: (email: string, password: string, meta?: { first_name?: string; last_name?: string }) => Promise<{ error: any | null; data: any | null }>;
   signOut: () => Promise<void>;
-  userRole: 'trainer' | 'member' | null;
+  userRole: Database["public"]["Enums"]["user_role"] | null;
   userCenter: string | null;
-  setUserRole: (role: 'trainer' | 'member') => Promise<void>;
+  centerName: string | null; // 센터 이름 상태 추가
+  setUserRole: (role: Database["public"]["Enums"]["user_role"]) => Promise<void>;
   refreshUserRole: (currentUser: User | null) => Promise<void>;
   updateUserMetadata: (metadata: UserMetadata) => Promise<{ error: any | null }>;
   refreshCounter: number;
@@ -26,8 +28,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRoleState] = useState<'trainer' | 'member' | null>(null);
+  const [userRole, setUserRoleState] = useState<Database["public"]["Enums"]["user_role"] | null>(null);
   const [userCenter, setUserCenter] = useState<string | null>(null);
+  const [centerName, setCenterName] = useState<string | null>(null); // 센터 이름 상태 추가
   const { toast } = useToast();
   const [refreshCounter, setRefreshCounter] = useState(0);
 
@@ -53,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('역할 조회 오류:', roleResult.error);
         setUserRoleState(null);
       } else {
-        setUserRoleState(roleResult.data?.role || null);
+        setUserRoleState(roleResult.data?.role as Database["public"]["Enums"]["user_role"] || null); // 타입 단언 추가
         console.log('[AuthContext] refreshUserRole: Role set to:', roleResult.data?.role || null);
       }
       console.log('[AuthContext] refreshUserRole: Finished handling role result.');
@@ -61,12 +64,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Fetch center
       console.log('[AuthContext] refreshUserRole: Fetching center...');
       centerResult = await supabase.from('center_users').select('center_id').eq('user_id', currentUser.id).maybeSingle();
-      console.log('[AuthContext] refreshUserRole: Center fetch result:', centerResult);
-      if (centerResult.error && centerResult.error.code !== 'PGRST116') { // Ignore 'not found'
-        console.error('센터 정보 조회 오류:', centerResult.error);
-        setUserCenter(null);
+      console.log('[AuthContext] refreshUserRole: Center (ID) fetch result:', centerResult);
+      const fetchedCenterId = centerResult.data?.center_id || null;
+      setUserCenter(fetchedCenterId);
+
+      if (fetchedCenterId) {
+        console.log('[AuthContext] refreshUserRole: Fetching center name for ID:', fetchedCenterId);
+        const { data: centerNameData, error: centerNameError } = await supabase
+          .from('centers')
+          .select('name')
+          .eq('id', fetchedCenterId)
+          .single();
+        if (centerNameError && centerNameError.code !== 'PGRST116') {
+          console.error('센터 이름 조회 오류:', centerNameError);
+          setCenterName(null);
+        } else {
+          setCenterName(centerNameData?.name || null);
+          console.log('[AuthContext] refreshUserRole: Center name set to:', centerNameData?.name || null);
+        }
       } else {
-        setUserCenter(centerResult.data?.center_id || null);
+        setCenterName(null); // 센터 ID가 없으면 센터 이름도 null
       }
 
       // Fetch profile (avatar_url)
@@ -93,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('사용자 역할/센터/프로필 정보 가져오기 실패:', error);
       setUserRoleState(null);
       setUserCenter(null);
+      setCenterName(null); // 오류 시 센터 이름도 null
     } finally {
        console.log('[AuthContext] refreshUserRole FINALLY');
        setLoading(false); // 함수 종료 시 항상 로딩 상태 해제
@@ -108,16 +126,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('[AuthContext] Initializing auth...');
       if (isMounted) setLoading(true);
       const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
-      console.log('[AuthContext] initializeAndListen: Got initial session:', initialSession ? 'Yes' : 'No');
+      console.log('[AuthContext] initializeAndListen: supabase.auth.getSession() called.');
+      console.log('[AuthContext] initializeAndListen: Initial session from getSession():', initialSession);
+      console.log('[AuthContext] initializeAndListen: Session error from getSession():', sessionError);
 
       if (sessionError) {
         console.error("Error fetching initial session:", sessionError);
       }
 
       const initialUser = initialSession?.user ?? null;
+      console.log('[AuthContext] initializeAndListen: Initial user object:', initialUser);
       if (isMounted) {
           setSession(initialSession);
           setUser(initialUser);
+          console.log(`[AuthContext] initializeAndListen: setUser called with:`, initialUser);
 
           if (initialUser) {
               console.log('[AuthContext] Initial user found, loading data...');
@@ -130,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   if (isMounted) {
                       setUserRoleState(null);
                       setUserCenter(null);
+                      setCenterName(null);
                   }
               }
           } else {
@@ -137,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (isMounted) {
                   setUserRoleState(null);
                   setUserCenter(null);
+                  setCenterName(null);
               }
           }
           console.log('[AuthContext] initializeAndListen: Setting initial loading FALSE');
@@ -160,8 +184,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (event === 'SIGNED_OUT') {
             setUserRoleState(null);
             setUserCenter(null);
+            setCenterName(null);
             setLoading(false);
-          } else if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+          } else if (event === 'SIGNED_IN' || event === 'USER_UPDATED') { // TOKEN_REFRESHED 조건 제거
             if (currentUser) {
               console.log(`[AuthContext] Refreshing user data due to ${event}...`);
               try {
@@ -171,19 +196,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   if (isMounted) {
                       setUserRoleState(null);
                       setUserCenter(null);
+                      setCenterName(null);
                   }
               } finally {
-                  // refreshUserRole 내부 finally에서 setLoading(false) 호출됨
-                  console.log(`[AuthContext] User data refresh finished after ${event}.`);
+                // refreshUserRole 내부 finally에서 setLoading(false) 호출됨
+                console.log(`[AuthContext] User data refresh finished after ${event}.`);
               }
-            } else {
-                 if (isMounted) {
-                     setUserRoleState(null);
-                     setUserCenter(null);
-                     setLoading(false);
-                 }
-            }
-          } else {
+          } else { // currentUser가 없는 경우 (예: TOKEN_REFRESHED 후 세션은 있지만 user가 없는 이상한 상황)
+               if (isMounted) {
+                   setUserRoleState(null);
+                   setUserCenter(null);
+                   setCenterName(null);
+                   setLoading(false);
+               }
+          }
+        } else { // SIGNED_OUT 이외의 다른 이벤트 (예: PASSWORD_RECOVERY 등)
              if (loading && isMounted) setLoading(false);
           }
         }
@@ -204,7 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // --- Other Auth Functions ---
 
-  const setUserRole = async (role: 'trainer' | 'member') => {
+  const setUserRole = async (role: Database["public"]["Enums"]["user_role"]) => { // Enum 타입 직접 사용
     if (!user) {
       toast({ title: '오류 발생', description: '사용자 인증이 필요합니다.', variant: 'destructive' });
       return;
@@ -348,6 +375,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut,
     userRole,
     userCenter,
+    centerName, // centerName 추가
     setUserRole,
     refreshUserRole,
     refreshCounter,

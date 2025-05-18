@@ -3,7 +3,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIconLucide, ChevronLeft, ChevronRight, CalendarDays, Loader2, Plus, MoreHorizontal } from 'lucide-react';
+import { Calendar as CalendarIconLucide, ChevronLeft, ChevronRight, CalendarDays, Loader2, Plus, MoreHorizontal, Play, Edit, UserX, Undo2, Trash2, Pencil, CircleDot, BarChart3, MessageSquare } from 'lucide-react'; // BarChart3 (측정), MessageSquare (상담) 아이콘 추가
 import { Calendar } from "@/components/ui/calendar";
 import { NewAppointmentModal, AppointmentData } from '@/components/features/NewAppointmentModal';
 import { EditAppointmentModal, EditAppointmentData } from '@/components/features/EditAppointmentModal';
@@ -32,8 +32,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog"; // Dialog import
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Tooltip import
+// 상태 표시에 아이콘을 사용하지 않으므로 CheckCircle, XCircle, CircleDot 등은 제거해도 무방
 
 interface CalendarEvent {
   id: string;
@@ -228,6 +230,27 @@ const SchedulePageMobile = () => {
     navigate('/workout', { state: { workoutSessionId: event.workoutSessionId, ptSessionId: event.id, selectedMember: memberInfo, selectedDate: event.start } });
   }, [navigate, allMembersList, toast]);
 
+  const handleStartMeasurement = useCallback((event: CalendarEvent) => {
+    const memberInfo = allMembersList.find(m => m.id === event.memberId);
+    if (!memberInfo) {
+      toast({ title: "오류", description: "회원 정보를 찾을 수 없습니다.", variant: "destructive" });
+      return;
+    }
+    navigate('/body-composition', { state: { selectedMember: memberInfo, ptSessionId: event.id } });
+  }, [navigate, allMembersList, toast]);
+
+  const handleStartConsultation = useCallback((event: CalendarEvent) => {
+    const memberInfo = allMembersList.find(m => m.id === event.memberId);
+    if (!memberInfo) {
+      toast({ title: "오류", description: "회원 정보를 찾을 수 없습니다.", variant: "destructive" });
+      return;
+    }
+    // 상담 페이지 경로는 '/consultation'으로 가정합니다. 실제 경로에 맞게 수정 필요.
+    // 상담 페이지에서 ptSessionId를 어떻게 활용할지에 따라 전달 여부 결정.
+    navigate('/consultation', { state: { selectedMember: memberInfo, ptSessionId: event.id } });
+    toast({ title: "안내", description: "상담 페이지로 이동합니다. (구현 예정)", variant: "default" });
+  }, [navigate, allMembersList, toast]);
+
   const handleToggleNoShow = useCallback(async (event: CalendarEvent) => {
     const newStatus = event.status === 'cancelled' ? 'scheduled' : 'cancelled';
     try {
@@ -254,71 +277,141 @@ const SchedulePageMobile = () => {
     } finally { setIsDeletingEvent(false); setIsDeleteConfirmOpen(false); setDeletingEvent(null); }
   }, [deletingEvent, toast]);
 
-  const MobileEventItem: React.FC<{event: CalendarEvent}> = ({ event }) => (
-    <Card 
-        id={`event-item-${event.id}`}
-        className={`mb-3 p-0 shadow-md overflow-hidden ${highlightedEventId === event.id ? 'ring-2 ring-primary' : ''}`}
-        onClick={() => handleEditAppointment(event)}
-    >
-      <div className="flex">
-        <div className="flex flex-col items-center w-20 p-2 bg-muted/30 border-r border-border/50">
-          <div className="text-base font-bold text-primary">{format(parseISO(event.start), 'HH:mm')}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">~{format(parseISO(event.end), 'HH:mm')}</div>
-          <div className="text-[0.65rem] text-muted-foreground mt-0.5">({event.duration}분)</div>
-        </div>
+  const MobileEventItem: React.FC<{event: CalendarEvent}> = ({ event }) => {
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-        <div className="flex-grow p-3">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2 mb-1">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={event.members?.avatarUrl || undefined} />
-                <AvatarFallback>{event.members?.name?.[0] || '?'}</AvatarFallback>
-              </Avatar>
-              <p className="font-semibold text-md leading-tight">{event.title}</p>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-                <Badge 
-                    variant={event.status === 'completed' ? 'default' : event.status === 'cancelled' ? 'destructive' : 'outline'}
-                    className={cn(
-                        "text-xs px-1.5 py-0.5",
-                        event.status === 'completed' && "bg-green-100 text-green-700 border-green-300",
-                        event.status === 'scheduled' && "border-blue-300 text-blue-700",
-                        event.status === 'cancelled' && "bg-red-100 text-red-700 border-red-300"
-                    )}
-                >
-                    {event.type === 'PT' ? 'PT' : event.type || '기타'}
-                    {event.status === 'completed' ? " (완료)" : event.status === 'cancelled' ? " (취소)" : ""}
-                </Badge>
-                {event.status === 'scheduled' && (
-                     <Button size="sm" variant="outline" className="h-6 px-1.5 py-0.5 text-xs" onClick={(e) => { e.stopPropagation(); handleStartPt(event); }}>PT 시작</Button>
-                )}
-                {event.status === 'completed' && event.workoutSessionId && (
-                     <Button size="sm" variant="outline" className="h-6 px-1.5 py-0.5 text-xs" onClick={(e) => { e.stopPropagation(); handleEditPt(event); }}>기록 수정</Button>
-                )}
-                 {event.status !== 'completed' && (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 mt-0.5" onClick={(e) => e.stopPropagation()}>
-                                <MoreHorizontal className="h-3.5 w-3.5" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenuItem onClick={() => handleToggleNoShow(event)}>
-                                {event.status === 'cancelled' ? '예약으로 변경' : '노쇼 처리'}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openDeleteConfirm(event)} className="text-destructive">
-                                예약 삭제
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                )}
-            </div>
-          </div>
-          {event.notes && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{event.notes}</p>}
+    // ScheduleCalendar.tsx의 renderDialogButtons 로직과 유사하게 버튼 생성
+    const renderDialogButtons = () => (
+      <TooltipProvider delayDuration={100}>
+        <div className="grid grid-cols-2 gap-3 w-full">
+          {event.status === 'scheduled' && (
+            <>
+              {event.type === 'PT' && (
+                <Tooltip><TooltipTrigger asChild><Button variant="outline" className={cn("w-full h-12 flex items-center justify-center text-base", "text-blue-700 border-blue-500 hover:bg-blue-100 hover:border-blue-600 hover:text-blue-700 dark:text-blue-400 dark:border-blue-600 dark:hover:bg-blue-900 dark:hover:text-blue-300")} onClick={(e) => { e.stopPropagation(); handleStartPt(event); setIsDetailModalOpen(false); }}><Play className="mr-2 h-6 w-6" /> PT 시작</Button></TooltipTrigger><TooltipContent><p>PT 시작</p></TooltipContent></Tooltip>
+              )}
+              {event.type === '측정' && (
+                <Tooltip><TooltipTrigger asChild><Button variant="outline" className={cn("w-full h-12 flex items-center justify-center text-base", "text-orange-700 border-orange-500 hover:bg-orange-100 hover:border-orange-600 hover:text-orange-700 dark:text-orange-400 dark:border-orange-600 dark:hover:bg-orange-900 dark:hover:text-orange-300")} onClick={(e) => { e.stopPropagation(); handleStartMeasurement(event); setIsDetailModalOpen(false); }}><BarChart3 className="mr-2 h-6 w-6" /> 측정 시작</Button></TooltipTrigger><TooltipContent><p>측정 시작</p></TooltipContent></Tooltip>
+              )}
+              {event.type === '상담' && (
+                <Tooltip><TooltipTrigger asChild><Button variant="outline" className={cn("w-full h-12 flex items-center justify-center text-base", "text-yellow-700 border-yellow-500 hover:bg-yellow-100 hover:border-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:border-yellow-600 dark:hover:bg-yellow-900 dark:hover:text-yellow-300")} onClick={(e) => { e.stopPropagation(); handleStartConsultation(event); setIsDetailModalOpen(false); }}><MessageSquare className="mr-2 h-6 w-6" /> 상담 시작</Button></TooltipTrigger><TooltipContent><p>상담 시작</p></TooltipContent></Tooltip>
+              )}
+              <Tooltip><TooltipTrigger asChild><Button variant="outline" className="w-full h-12 flex items-center justify-center text-base hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-700 dark:hover:text-slate-50" onClick={(e) => { e.stopPropagation(); handleEditAppointment(event); setIsDetailModalOpen(false); }}><Pencil className="mr-2 h-6 w-6" /> 예약 수정</Button></TooltipTrigger><TooltipContent><p>예약 수정</p></TooltipContent></Tooltip>
+              <Tooltip><TooltipTrigger asChild><Button variant="outline" className="w-full h-12 flex items-center justify-center text-base text-red-700 border-red-500 hover:bg-red-100 hover:border-red-600 hover:text-red-700" onClick={(e) => { e.stopPropagation(); handleToggleNoShow(event); setIsDetailModalOpen(false); }}><UserX className="mr-2 h-6 w-6" /> 노쇼 처리</Button></TooltipTrigger><TooltipContent><p>노쇼 처리</p></TooltipContent></Tooltip>
+            </>
+          )}
+          {event.status === 'completed' && (
+            <>
+              <Tooltip><TooltipTrigger asChild><Button variant="outline" className="w-full h-12 flex items-center justify-center text-base hover:bg-slate-100 hover:text-slate-900" onClick={(e) => { e.stopPropagation(); handleEditPt(event); setIsDetailModalOpen(false); }}><Edit className="mr-2 h-6 w-6" /> 기록 수정</Button></TooltipTrigger><TooltipContent><p>기록 수정</p></TooltipContent></Tooltip>
+              <Button variant="outline" disabled className="w-full h-12 flex items-center justify-center text-base opacity-50 cursor-not-allowed"><Pencil className="mr-2 h-6 w-6" /> 예약 수정 불가</Button>
+              <Button variant="outline" disabled className="w-full h-12 flex items-center justify-center text-base opacity-50 cursor-not-allowed"><UserX className="mr-2 h-6 w-6" /> 노쇼 처리 불가</Button>
+            </>
+          )}
+          {event.status === 'cancelled' && (
+            <Tooltip><TooltipTrigger asChild><Button variant="outline" className="w-full h-12 flex items-center justify-center text-base text-yellow-700 border-yellow-500 hover:bg-yellow-100 hover:border-yellow-600 hover:text-yellow-700" onClick={(e) => { e.stopPropagation(); handleToggleNoShow(event); setIsDetailModalOpen(false); }}><Undo2 className="mr-2 h-6 w-6" /> 노쇼 해제</Button></TooltipTrigger><TooltipContent><p>노쇼 해제</p></TooltipContent></Tooltip>
+          )}
+          <Tooltip><TooltipTrigger asChild><Button variant="destructive" className="w-full h-12 flex items-center justify-center text-base" onClick={(e) => { e.stopPropagation(); openDeleteConfirm(event); setIsDetailModalOpen(false); }}><Trash2 className="mr-2 h-6 w-6" /> 예약 삭제</Button></TooltipTrigger><TooltipContent><p>예약 삭제</p></TooltipContent></Tooltip>
         </div>
-      </div>
-    </Card>
-  );
+      </TooltipProvider>
+    );
+
+    return (
+      <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+        <DialogTrigger asChild>
+          <div // Card를 div로 변경하고 flex 적용
+              id={`event-item-${event.id}`}
+              className={`mb-3 shadow-md overflow-hidden cursor-pointer flex rounded-md bg-card ${highlightedEventId === event.id ? 'ring-2 ring-primary' : 'border border-transparent hover:border-primary/50'}`}
+          >
+            {(() => {
+              // 데스크탑 버전 EventItem의 barColor 로직과 동일하게 적용
+              let barColor = "bg-slate-500 dark:bg-slate-400";
+              if (event.status === 'completed') {
+                barColor = "bg-green-500 dark:bg-green-600";
+              } else if (event.status === 'cancelled') {
+                barColor = "bg-red-500 dark:bg-red-600";
+              } else if (event.status === 'scheduled') {
+                barColor = "bg-blue-500 dark:bg-blue-600"; // 기본 'scheduled' 색상
+                // event.type에 따라 barColor 추가 분기
+                if (event.type === '상담') {
+                  barColor = "bg-yellow-400 dark:bg-yellow-500"; // 상담은 더 밝은 노란색
+                } else if (event.type === '측정') {
+                  barColor = "bg-orange-500 dark:bg-orange-600";
+                }
+              }
+
+              let statusText = event.type === 'PT' ? 'PT' : event.type || '기타';
+              // 데스크탑 버전과 동일하게 라이트/다크 모드 텍스트 색상 기본값 설정 고려 (일단 기존 로직 유지)
+              let statusTextColor = "text-slate-700 dark:text-slate-300"; // 기본값
+              if (event.status === 'completed') {
+                statusText += " (완료)";
+                statusTextColor = "text-green-600 dark:text-green-500"; // barColor: bg-green-500 dark:bg-green-600
+              } else if (event.status === 'cancelled') {
+                statusText += " (취소)";
+                statusTextColor = "text-red-600 dark:text-red-500"; // barColor: bg-red-500 dark:bg-red-600
+              } else if (event.status === 'scheduled') {
+                if (event.type === 'PT') {
+                  statusTextColor = "text-blue-600 dark:text-blue-500"; // barColor: bg-blue-500 dark:bg-blue-600
+                } else if (event.type === '상담') {
+                  statusTextColor = "text-yellow-500 dark:text-yellow-400"; // barColor: bg-yellow-400 dark:bg-yellow-500
+                } else if (event.type === '측정') {
+                  statusTextColor = "text-orange-600 dark:text-orange-500"; // barColor: bg-orange-500 dark:bg-orange-600
+                }
+              }
+
+              return (
+                <>
+                  <div className={`w-2 flex-shrink-0 ${barColor}`}></div> {/* 세로 색상 바 (너비 w-2) */}
+                  <div className="flex-grow"> {/* 기존 CardContent 역할 */}
+                    <div className="flex">
+                      <div className="flex flex-col items-center justify-center w-24 p-2 bg-muted/30 border-r border-border/50">
+                        <div className="text-lg font-bold text-primary">{format(parseISO(event.start), 'HH:mm')}</div>
+                        <div className="text-sm text-muted-foreground mt-0.5">~{format(parseISO(event.end), 'HH:mm')}</div>
+                        {/* <div className="text-xs text-muted-foreground mt-0.5">(50분)</div> */}{/* (50분) 텍스트 삭제 */}
+                      </div>
+                      <div className="flex-grow p-3 flex flex-col justify-center">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-14 w-14">
+                              <AvatarImage src={event.members?.avatarUrl || undefined} />
+                              <AvatarFallback className="text-2xl">{event.members?.name?.[0] || '?'}</AvatarFallback>
+                            </Avatar>
+                            <p className="font-semibold text-xl leading-tight">{event.title}</p>
+                          </div>
+                          <span className={`text-base font-semibold ${statusTextColor} whitespace-nowrap`}>{statusText}</span> {/* font-medium -> font-semibold */}
+                        </div>
+                        {event.notes && <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{event.notes}</p>}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl">{event.title} - {event.type || '일정'}</DialogTitle>
+            <DialogDescription className="text-base">
+              {format(parseISO(event.start), 'yyyy년 M월 d일 HH:mm', { locale: ko })} - {format(parseISO(event.end), 'HH:mm', { locale: ko })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            {event.notes && (
+              <div className="mb-3">
+                <h4 className="text-base font-semibold mb-1">메모:</h4>
+                <p className="text-base text-muted-foreground whitespace-pre-wrap bg-muted p-2 rounded-md">{event.notes}</p>
+              </div>
+            )}
+             <div className="text-base">
+               <p><span className="font-semibold">상태:</span> {event.status === 'completed' ? '완료' : event.status === 'cancelled' ? '취소됨' : '예약됨'}</p>
+             </div>
+          </div>
+          <DialogFooter className="pt-4">
+            {renderDialogButtons()}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
 
   return (
     <AppLayout>
@@ -383,5 +476,5 @@ const SchedulePageMobile = () => {
     </AppLayout>
   );
 };
-
+ 
 export default SchedulePageMobile;

@@ -40,7 +40,6 @@ const SchedulePage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { members, isLoading: membersLoading } = useMembers();
-  const [refetchCounter, setRefetchCounter] = useState(0);
   // 삭제 관련 상태 추가
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deletingEvent, setDeletingEvent] = useState<CalendarEvent | null>(null);
@@ -55,10 +54,6 @@ const SchedulePage = () => {
 
   const handleNewAppointment = () => {
     setIsNewAppointmentModalOpen(true);
-  };
-
-  const triggerRefetch = () => {
-    setRefetchCounter(prev => prev + 1);
   };
 
   const handleNavigate = (action: 'PREV' | 'NEXT' | 'TODAY') => {
@@ -101,7 +96,7 @@ const SchedulePage = () => {
 
         const { data: sessionsData, error: sessionsError } = await supabase
           .from('pt_sessions')
-          .select('id, member_id, trainer_id, start_time, end_time, status, notes, type, background_color, workout_session_id') // workout_session_id 추가
+          .select('id, member_id, trainer_id, start_time, end_time, status, notes, type, background_color, workout_session_id, calendar_column_index') // calendar_column_index 추가
           .eq('trainer_id', user.id)
           .gte('start_time', viewStart.toISOString())
           .lte('end_time', viewEnd.toISOString())
@@ -114,25 +109,23 @@ const SchedulePage = () => {
 
           const fetchedEvents: CalendarEvent[] = [];
           for (const session of sessionsData) {
-            const workoutSessionId = session.workout_session_id; // 직접 컬럼 값 사용
+            const workoutSessionId = session.workout_session_id;
             const start = session.start_time;
             const end = session.end_time;
             const status = session.status;
             const type = session.type as "PT" | "상담" | "측정" | null;
-            const defaultColor = "#1d4ed8ff"; // 기본 파란색 (불투명)
-            const completedColor = "#6b7280ff"; // 완료 색상 (회색 계열, 불투명)
-            const cancelledColor = "#ef4444ff"; // 취소 색상 (빨간색 계열, 불투명)
+            const defaultColor = "#1d4ed8ff";
+            const completedColor = "#6b7280ff";
+            const cancelledColor = "#ef4444ff";
 
-            let bgColor = session.background_color || defaultColor; // DB 값 우선, 없으면 기본 파란색
+            let bgColor = session.background_color || defaultColor;
 
-            // Status overrides custom color
             if (status === 'completed') {
               bgColor = completedColor;
             } else if (status === 'cancelled') {
               bgColor = cancelledColor;
             }
 
-            // Darken border color slightly
             const darkenColor = (hexColor: string | null | undefined): string => {
                if (!hexColor || !hexColor.startsWith('#') || hexColor.length < 7) return hexColor || defaultColor;
                try {
@@ -155,8 +148,8 @@ const SchedulePage = () => {
             const borderColor = darkenColor(bgColor);
 
             fetchedEvents.push({
-               id: session.id, // pt_sessions ID
-               workoutSessionId: workoutSessionId, // Use direct value
+               id: session.id,
+               workoutSessionId: workoutSessionId,
                title: memberMap.get(session.member_id) || '알 수 없는 회원',
                start,
                end,
@@ -167,6 +160,14 @@ const SchedulePage = () => {
                backgroundColor: bgColor,
                borderColor: borderColor,
                textColor: '#ffffff',
+               layout: { // layout 객체에 calendar_column_index 저장
+                 top: 0, // 초기값, TimeGridView에서 계산됨
+                 height: 0, // 초기값, TimeGridView에서 계산됨
+                 left: 0, // 초기값, TimeGridView에서 계산됨
+                 width: 0, // 초기값, TimeGridView에서 계산됨
+                 zIndex: 10, // 초기값, TimeGridView에서 계산됨
+                 columnIndex: session.calendar_column_index ?? undefined, // DB에서 가져온 값 사용
+               }
             });
           }
           setEvents(fetchedEvents);
@@ -180,13 +181,13 @@ const SchedulePage = () => {
       } finally {
         setIsLoading(false);
       }
-    }, [user, members, membersLoading, toast, currentDate]);
+    }, [user, members, membersLoading, toast]);
 
     useEffect(() => {
       if (!membersLoading) {
         fetchEvents();
       }
-  }, [fetchEvents, refetchCounter, membersLoading, currentDate]);
+  }, [fetchEvents, membersLoading]);
 
   // Dashboard에서 전달된 highlightId 처리 (상태 설정만)
   useEffect(() => {
@@ -200,7 +201,7 @@ const SchedulePage = () => {
       // 스크롤 및 깜빡임 로직은 ScheduleCalendar 내부에서 처리하도록 제거
     }
      // highlightId가 null로 초기화되는 로직도 제거 (ScheduleCalendar에서 처리 후 초기화)
-  }, [location.key, navigate]); // location.key 변경 시 실행
+  }, [location.key, navigate]);
 
 
   // WorkoutPage에서 돌아왔을 때 상태 업데이트 및 refetch 트리거
@@ -223,10 +224,10 @@ const SchedulePage = () => {
     } else if (state?.refetch) {
        // Fallback for general refetch if needed (e.g., after deletion)
        // console.log('[SchedulePage] Received general refetch trigger.'); // 로그 제거
-       triggerRefetch();
+       fetchEvents();
        navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state, navigate, setEvents, triggerRefetch]); // triggerRefetch는 폴백용으로 유지
+  }, [location.state, navigate, setEvents]);
 
   const dailyCount = useMemo(() => {
       return events.filter(e => isSameDay(e.start, currentDate)).length;
@@ -320,8 +321,8 @@ const SchedulePage = () => {
 
           toast({ title: "성공", description: "예약 정보가 데이터베이스에 저장되었습니다." });
           setIsNewAppointmentModalOpen(false);
-          triggerRefetch();
           resolve();
+          fetchEvents();
 
         } catch (error: any) {
           console.error("Error saving appointment:", error);
@@ -422,16 +423,16 @@ const SchedulePage = () => {
 
       if (updateError) throw updateError;
 
-      toast({ title: "성공", description: "예약 정보가 업데이트되었습니다." });
-      setIsEditAppointmentModalOpen(false); // 모달 닫기
-      triggerRefetch(); // 목록 새로고침
-      return Promise.resolve(); // 성공 시 resolve
+          toast({ title: "성공", description: "예약 정보가 업데이트되었습니다." });
+          setIsEditAppointmentModalOpen(false); // 모달 닫기
+          fetchEvents(); // 목록 새로고침
+          return Promise.resolve(); // 성공 시 resolve
     } catch (error: any) {
       console.error("Error updating appointment:", error);
       toast({ title: "수정 오류", description: error.message || "예약 수정 중 오류 발생", variant: "destructive" });
       return Promise.reject(error); // 실패 시 reject
     }
-  }, [user, toast, triggerRefetch]); // 의존성 배열 확인 및 수정
+  }, [user, toast]);
 
   const handleStartPt = useCallback((event: CalendarEvent) => {
     const memberInfo = members.find(m => m.id === event.memberId);
@@ -480,12 +481,13 @@ const SchedulePage = () => {
       if (error) throw error;
 
       toast({ title: "성공", description: `예약 상태를 ${newStatus === 'cancelled' ? '노쇼' : '예약됨'}으로 변경했습니다.` });
-      triggerRefetch();
+      fetchEvents();
     } catch (error: any) {
       console.error("Error updating session status:", error);
       toast({ title: "오류", description: `예약 상태 변경 중 오류 발생: ${error.message}`, variant: "destructive" });
+      fetchEvents();
     }
-  }, [toast, triggerRefetch]);
+  }, [toast]);
 
 
   // 예약 삭제 핸들러 추가
@@ -506,7 +508,7 @@ const SchedulePage = () => {
       //   service: 'database',
       //   enable_unsafe_mode: true,
       // });
-      // console.log('[handleDeletePt] Unsafe mode enabled.');
+      // console.log('[handleDeletePt] Unsafe mode disabled.');
 
       // Perform the delete operation
       // console.log('[handleDeletePt] Attempting to delete from Supabase...'); // 로그 제거
@@ -549,7 +551,7 @@ const SchedulePage = () => {
       // console.log('[handleDeletePt] Finished delete process.'); // 로그 제거
     }
   // }, [deletingEvent, toast, triggerRefetch, callSupabaseTool]); // callSupabaseTool 의존성 제거
-  }, [deletingEvent, toast]); // triggerRefetch 의존성 제거
+  }, [deletingEvent, toast]);
 
 
   return (
@@ -568,9 +570,11 @@ const SchedulePage = () => {
               </Button>
             </div>
           </div>
-          <div className="flex items-center justify-center p-4 pt-0 relative">
-            <h2 className="text-xl font-semibold">{calendarTitle}</h2>
-            <div className="flex items-center gap-2 absolute right-4">
+          {/* flex-wrap을 추가하고, justify-between으로 변경하여 공간이 부족하면 버튼 그룹이 아래로 내려가도록 함 */}
+          <div className="flex flex-wrap items-center justify-between p-4 pt-0 gap-x-4 gap-y-2">
+            <h2 className="text-xl font-semibold whitespace-nowrap">{calendarTitle}</h2> {/* 날짜가 줄바꿈되지 않도록 */}
+            {/* absolute 제거 */}
+            <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => handleNavigate('PREV')}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -631,7 +635,6 @@ const SchedulePage = () => {
             currentDate={currentDate}
             events={events}
             isLoading={isLoading}
-            refetchTrigger={refetchCounter}
             highlightedEventId={highlightedEventId} // highlightedEventId prop 전달
             setHighlightedEventId={setHighlightedEventId} // 상태 초기화 함수 전달
             onStartPt={handleStartPt}
@@ -639,6 +642,25 @@ const SchedulePage = () => {
             onEditAppointment={handleEditAppointment} // 예약 수정 핸들러 전달
             onToggleNoShow={handleToggleNoShow}
             onDeletePt={openDeleteConfirm}
+            onEventDrop={(eventId, newStart, newEnd, columnIndex) => {
+              // 디버깅: 드롭 정보 출력
+              console.log('[onEventDrop] eventId:', eventId, 'newStart:', newStart, 'newEnd:', newEnd, 'columnIndex:', columnIndex);
+              setEvents(prevEvents =>
+                prevEvents.map(event =>
+                  event.id === eventId
+                    ? {
+                        ...event,
+                        start: newStart.toISOString(),
+                        end: newEnd.toISOString(),
+                        layout: {
+                          ...event.layout,
+                          columnIndex: typeof columnIndex === 'number' ? columnIndex : undefined,
+                        },
+                      }
+                    : event
+                )
+              );
+            }}
           />
         </div>
       </div>
@@ -647,7 +669,7 @@ const SchedulePage = () => {
         onClose={() => setIsNewAppointmentModalOpen(false)}
         onSave={handleSaveAppointment}
       />
-
+ 
       {/* 예약 수정 모달 */}
       <EditAppointmentModal
         isOpen={isEditAppointmentModalOpen}
@@ -655,7 +677,7 @@ const SchedulePage = () => {
         onSave={handleUpdateAppointment}
         appointment={editingAppointment}
       />
-
+ 
       {/* 예약 삭제 확인 다이얼로그 */}
       <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
         <AlertDialogContent>
@@ -681,5 +703,6 @@ const SchedulePage = () => {
     </AppLayout>
   );
 };
-
+ 
 export default SchedulePage;
+

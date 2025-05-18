@@ -15,7 +15,7 @@ import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, Pagi
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Filter, X, ChevronDown, ChevronUp } from 'lucide-react'; // Chevron 아이콘 추가
+import { Calendar as CalendarIcon, Filter, X, ChevronDown, ChevronUp, Edit, Trash2 } from 'lucide-react'; // Edit, Trash2 아이콘 추가
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -257,7 +257,7 @@ export function BodyCompositionHistoryPage() {
 
   const formatDateDisplay = (dateString: string): string => {
     try {
-      return format(parseISO(dateString), 'yyyy.MM.dd');
+      return format(parseISO(dateString), 'yy.MM.dd');
     } catch {
       return '날짜 오류';
     }
@@ -442,16 +442,16 @@ export function BodyCompositionHistoryPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[40px]"></TableHead> {/* 토글 버튼 열 */}
-                    <TableHead>측정일</TableHead>
-                    <TableHead>회원</TableHead>
-                    <TableHead className="text-right">체중(kg)</TableHead>
-                    <TableHead className="text-right">신장(cm)</TableHead>
-                    <TableHead className="text-right">골격근량(kg)</TableHead>
-                    <TableHead className="text-right">체지방률(%)</TableHead>
-                    <TableHead className="text-right">BMI</TableHead>
+                    <TableHead className="w-[40px] px-2"></TableHead> {/* 토글 버튼 열, 패딩 조정 */}
+                    <TableHead className="text-right px-2">측정일</TableHead> {/* 오른쪽 정렬 및 패딩 조정 */}
+                    <TableHead className="text-right px-2">회원</TableHead> {/* 오른쪽 정렬 및 패딩 조정 */}
+                    <TableHead className="text-right px-2">체중(kg)</TableHead> {/* 패딩 조정 */}
+                    <TableHead className="text-right px-2">신장(cm)</TableHead> {/* 패딩 조정 */}
+                    <TableHead className="text-right px-2">골격근량(kg)</TableHead> {/* 패딩 조정 */}
+                    <TableHead className="text-right px-2">체지방률(%)</TableHead> {/* 패딩 조정 */}
+                    <TableHead className="text-right px-2">BMI</TableHead> {/* 패딩 조정 */}
                     {/* 메모 열 제거 */}
-                    <TableHead className="text-right">액션</TableHead>
+                    <TableHead className="text-right px-2"><span className="sr-only">액션</span></TableHead> {/* 제목 숨김 (접근성 고려) */}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -465,22 +465,28 @@ export function BodyCompositionHistoryPage() {
                     return (
                       <React.Fragment key={log.id}>
                         <TableRow>
-                          <TableCell>
+                          <TableCell className="px-2"> {/* 패딩 조정 */}
                             <Button variant="ghost" size="icon" onClick={() => toggleRowExpansion(log.id)}>
                               {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                             </Button>
                           </TableCell>
-                          <TableCell>{formatDateDisplay(log.measurement_date)}</TableCell>
-                          <TableCell>{log.members?.name ?? '알 수 없음'}</TableCell>
-                          <TableCell className="text-right">{log.weight_kg?.toFixed(1) ?? '-'}</TableCell>
-                          <TableCell className="text-right">{log.height_cm?.toFixed(1) ?? '-'}</TableCell>
-                          <TableCell className="text-right">{log.skeletal_muscle_mass_kg?.toFixed(1) ?? '-'}</TableCell>
-                          <TableCell className="text-right">{log.body_fat_percentage?.toFixed(1) ?? '-'}</TableCell>
-                          <TableCell className="text-right">{log.bmi?.toFixed(1) ?? '-'}</TableCell>
+                          <TableCell className="text-right px-2">{formatDateDisplay(log.measurement_date)}</TableCell> {/* 오른쪽 정렬 및 패딩 조정 */}
+                          <TableCell className="whitespace-nowrap text-right px-2">{log.members?.name ?? '알 수 없음'}</TableCell> {/* 줄바꿈 방지, 오른쪽 정렬 및 패딩 조정 */}
+                          <TableCell className="text-right px-2">{log.weight_kg?.toFixed(1) ?? '-'}</TableCell> {/* 패딩 조정 */}
+                          <TableCell className="text-right px-2">{log.height_cm?.toFixed(1) ?? '-'}</TableCell> {/* 패딩 조정 */}
+                          <TableCell className="text-right px-2">{log.skeletal_muscle_mass_kg?.toFixed(1) ?? '-'}</TableCell> {/* 패딩 조정 */}
+                          <TableCell className="text-right px-2">{log.body_fat_percentage?.toFixed(1) ?? '-'}</TableCell> {/* 패딩 조정 */}
+                          <TableCell className="text-right px-2">{log.bmi?.toFixed(1) ?? '-'}</TableCell> {/* 패딩 조정 */}
                           {/* 메모 셀 제거 */}
-                          <TableCell className="text-right space-x-1">
-                            <Button variant="outline" size="sm" onClick={() => handleEditClick(log)} disabled={isLoading}>수정</Button>
-                            <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(log.id)} disabled={isLoading}>삭제</Button>
+                          <TableCell className="text-right px-2"> {/* 패딩 일관성 */}
+                            <div className="inline-flex flex-col items-stretch space-y-1"> {/* 버튼 그룹을 세로로, 간격 추가, 너비 동일하게 */}
+                              <Button variant="ghost" size="icon" onClick={() => handleEditClick(log)} disabled={isLoading} aria-label="수정">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(log.id)} disabled={isLoading} aria-label="삭제">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                         {isExpanded && (

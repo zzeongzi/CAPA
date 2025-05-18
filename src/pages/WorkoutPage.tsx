@@ -32,13 +32,14 @@ import {
   AlertDialogOverlay,
   AlertDialogPortal,
 } from "@/components/ui/alert-dialog";
+// Dialog 관련 import 제거
 import { Loader2, ChevronLeft, ChevronRight, User, Clock } from 'lucide-react'; // User, Clock 아이콘 추가
 import type SwiperCore from 'swiper';
 import { v4 as uuidv4 } from 'uuid';
 import { Database } from '@/integrations/supabase/types';
 import { format, setHours, setMinutes, getHours, parseISO } from 'date-fns'; // parseISO 추가, getHours 추가
 import { ko } from 'date-fns/locale'; // ko 로케일 추가
-import { SelectUserModal } from '@/components/features/SelectUserModal'; // SelectUserModal import
+import MemberSelector from '@/components/features/workout/MemberSelector'; // SelectUserModal import
 import { SelectHourModal } from '@/components/features/workout/SelectHourModal'; // SelectHourModal import
 import { useMembers, Member } from '@/hooks/use-members'; // Member 타입 import
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Avatar import
@@ -246,8 +247,8 @@ const WorkoutPage = () => {
 
 
   // 회원 선택 모달에서 회원 선택 시 호출될 콜백
-  const handleMemberSelect = (member: Member) => {
-    setSelectedMemberId(member.id); // auth.users.id 저장
+  const handleMemberSelect = (memberId: string | null) => {
+    setSelectedMemberId(memberId); // auth.users.id 저장
     setIsMemberModalOpen(false); // 모달 닫기
   };
 
@@ -572,26 +573,16 @@ const WorkoutPage = () => {
           <CardHeader>
             <CardTitle>수업 정보</CardTitle>
             <div className="flex flex-col sm:flex-row gap-4 mt-4">
-              {/* 회원 선택 버튼 */}
+              {/* 회원 선택 버튼을 MemberSelector로 대체 */}
               <div className="flex-1">
                  <Label>회원</Label>
-                 <Button
-                   variant="outline"
-                   className="w-full justify-start text-left font-normal mt-1 h-10"
-                   onClick={() => setIsMemberModalOpen(true)}
-                 >
-                   {selectedMember ? (
-                     <div className="flex items-center gap-2">
-                       <Avatar className="h-6 w-6">
-                         <AvatarImage src={selectedMember.avatarUrl ?? undefined} />
-                         <AvatarFallback>{selectedMember.initials}</AvatarFallback>
-                       </Avatar>
-                       <span>{selectedMember.name}</span>
-                     </div>
-                   ) : (
-                     <span className="text-muted-foreground">회원을 선택하세요</span>
-                   )}
-                 </Button>
+                 {/* Button 대신 MemberSelector 직접 사용 */}
+                 <div className="mt-1">
+                   <MemberSelector
+                     selectedMemberId={selectedMemberId}
+                     onSelectMember={handleMemberSelect}
+                   />
+                 </div>
               </div>
               {/* 날짜 및 시간 선택 영역 */}
               <div className="flex flex-1 gap-2 items-end">
@@ -669,12 +660,7 @@ const WorkoutPage = () => {
         </div>
       </div>
 
-      {/* 회원 선택 모달 */}
-      <SelectUserModal
-        isOpen={isMemberModalOpen}
-        onClose={() => setIsMemberModalOpen(false)}
-        onUserSelect={handleMemberSelect}
-      />
+      {/* MemberSelector를 Dialog로 감싸는 부분 제거 (이미 위에서 직접 사용) */}
 
       {/* 시간 선택 모달 */}
       <SelectHourModal

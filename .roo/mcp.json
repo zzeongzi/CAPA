@@ -17,8 +17,9 @@
         "--auth-token",
         "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"
       ],
-      "disabled": false,
-      "autoApprove": []
+      "disabled": true,
+      "autoApprove": [],
+      "alwaysAllow": []
     },
     "supabase": {
       "command": "cmd",
@@ -55,7 +56,8 @@
         "merge_branch",
         "reset_branch",
         "rebase_branch"
-      ]
+      ],
+      "disabled": true
     },
     "mcp-installer": {
       "command": "npx",
@@ -71,25 +73,6 @@
         "search_supabase_mcp_server_docs",
         "search_supabase_mcp_server_code",
         "fetch_url_content"
-      ],
-      "disabled": false
-    },
-    "supabase - jijijjh@gmail.com's Project": {
-      "url": "https://mcp.composio.dev/supabase/mysterious-sharp-plumber-FG27gQ",
-      "alwaysAllow": [
-        "SUPABASE_LIST_ALL_PROJECTS",
-        "SUPABASE_GET_PROJECT_API_KEYS",
-        "SUPABASE_LIST_ALL_ORGANIZATIONS",
-        "SUPABASE_CREATE_A_FUNCTION",
-        "SUPABASE_CREATE_A_PROJECT",
-        "SUPABASE_LIST_ALL_DATABASE_BRANCHES",
-        "SUPABASE_BETA_RUN_SQL_QUERY",
-        "SUPABASE_LIST_ALL_FUNCTIONS",
-        "SUPABASE_CREATE_AN_ORGANIZATION",
-        "SUPABASE_GENERATE_TYPE_SCRIPT_TYPES",
-        "SUPABASE_GET_REQUIRED_PARAMETERS",
-        "SUPABASE_CHECK_ACTIVE_CONNECTION",
-        "SUPABASE_INITIATE_CONNECTION"
       ],
       "disabled": false
     },
@@ -162,7 +145,8 @@
         "search_files",
         "get_file_info",
         "list_allowed_directories"
-      ]
+      ],
+      "disabled": false
     }
   }
 }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "393164326933",
+    "project_id": "fitfluent-7ab64",
+    "storage_bucket": "fitfluent-7ab64.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:393164326933:android:322fffbacb8269484c661c",
+        "android_client_info": {
+          "package_name": "com.fitfluent.connect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXKqSwJ4rrDHJ4zbnvfRiZAIQ3qblDHaA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

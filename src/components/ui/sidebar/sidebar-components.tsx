@@ -4,7 +4,7 @@ import { Slot } from "@radix-ui/react-slot"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet" // SheetHeader, SheetTitle, SheetDescription 추가
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSidebar } from "./sidebar-context"
 
@@ -47,7 +47,13 @@ export const Sidebar = React.forwardRef<
           style={{ "--sidebar-width": SIDEBAR_WIDTH_MOBILE } as React.CSSProperties}
           side={side}
         >
-          <div className="flex h-full w-full flex-col">{children}</div>
+          <SheetHeader className="p-4 border-b"> {/* 헤더 영역 추가 */}
+            <SheetTitle>메뉴</SheetTitle>
+            <SheetDescription>
+              원하는 기능으로 빠르게 이동하세요.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex h-full w-full flex-col">{children}</div> {/* 기존 children은 그대로 유지 */}
         </SheetContent>
       </Sheet>
     )

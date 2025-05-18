@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react"; // useEffect 제거, useMemo 추가
+import React, { useState, useMemo, useRef } from "react"; // useEffect 제거, useMemo 추가, useRef 추가
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ const MemberSelector: React.FC<MemberSelectorProps> = ({
   const { members, isLoadingMembers, memberError } = useWorkoutStore();
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const triggerRef = useRef<HTMLButtonElement>(null); // PopoverTrigger 버튼 ref
   const debouncedSearchValue = useDebounce(searchValue, 500); // 검색 디바운스 유지
 
   // 클라이언트 측 필터링 로직
@@ -54,14 +55,16 @@ const MemberSelector: React.FC<MemberSelectorProps> = ({
   const selectedMember = members.find((member) => member.id === selectedMemberId);
 
   return (
-    <Popover open={open} onOpenChange={(isOpen) => {
+    <Popover modal={true} open={open} onOpenChange={(isOpen) => {
       setOpen(isOpen);
       if (!isOpen) {
         setSearchValue(""); // Popover 닫힐 때 검색어 초기화
+        triggerRef.current?.focus(); // Popover 닫힐 때 트리거 버튼으로 포커스 이동
       }
     }}>
       <PopoverTrigger asChild>
         <Button
+          ref={triggerRef} // ref 연결
           variant="outline"
           role="combobox"
           aria-expanded={open}
@@ -79,7 +82,11 @@ const MemberSelector: React.FC<MemberSelectorProps> = ({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] p-0"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
         <Command>
           <CommandInput
             placeholder="회원 이름 또는 전화번호 검색..."
