@@ -949,12 +949,22 @@ export function ScheduleCalendar(props: ScheduleCalendarProps): JSX.Element {
       const { error } = await supabase
         .from('pt_sessions')
         .update({
-          start_time: newStart.toISOString(), // Use 'start_time'
-          end_time: newEnd.toISOString(),   // Use 'end_time'
-          // type, member_id, notes etc. remain unchanged on drag-drop
-          // If you need to store columnIndex in the DB, add it here.
+          start_time: newStart.toISOString(),
+          end_time: newEnd.toISOString(),
+          column_index: columnIndex // column_index 필드 추가
         })
-        .eq('id', eventId); // eventId is pt_sessions.id
+        .eq('id', eventId)
+        .select();
+
+      if (error) {
+        console.error("Database update error:", error);
+        toast({ 
+          title: "데이터베이스 오류", 
+          description: "일정 위치 업데이트에 실패했습니다. 다시 시도해주세요.", 
+          variant: "destructive" 
+        });
+        return;
+      }
 
       if (error) {
         throw error;
