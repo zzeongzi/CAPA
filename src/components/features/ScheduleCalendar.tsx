@@ -544,25 +544,9 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
           const startMinuteInHour = Math.max(0, differenceInMinutes(eventStartObj, hourStart));
           const endMinuteInHour = Math.min(60, differenceInMinutes(eventEndObj, hourStart));
 
-          let assignedColumn = -1;
-          const preferredColumn = (event.layout as { columnIndex?: number })?.columnIndex;
-
-          // 드롭된 이벤트의 경우 지정된 칸에 강제 할당
-          if (preferredColumn !== undefined && preferredColumn >= 0 && preferredColumn < MAX_EVENTS_PER_ROW_DAY) {
-            assignedColumn = preferredColumn;
-          } else {
-            // 빈 칸 찾기
-            for (let col = 0; col < MAX_EVENTS_PER_ROW_DAY; col++) {
-              if (!occupiedColumns[startMinuteInHour]?.[col]) {
-                assignedColumn = col;
-                break;
-              }
-            }
-            // 모든 칸이 차있으면 첫 번째 칸에 배치
-            if (assignedColumn === -1) {
-              assignedColumn = 0;
-            }
-          }
+          // 드롭된 이벤트의 경우 columnIndex를 직접 사용
+          const columnIndex = (event.layout as { columnIndex?: number })?.columnIndex;
+          const assignedColumn = columnIndex !== undefined ? columnIndex : 0;
 
           // 점유 상태 업데이트
           for (let m = startMinuteInHour; m < endMinuteInHour; m++) {
