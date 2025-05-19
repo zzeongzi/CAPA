@@ -724,31 +724,37 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
                                 
                                 try {
                                   const eventData = JSON.parse(data);
-                                  const { id, durationMinutes } = eventData;
+                                  if (!eventData || !eventData.id || !eventData.durationMinutes) {
+                                    throw new Error("Invalid event data");
+                                  }
                                   
+                                  const { id, durationMinutes } = eventData;
                                   const newStart = setMinutes(setHours(startOfDay(day), hour), 0);
                                   const newEnd = addMinutes(newStart, durationMinutes);
                                   
                                   // 이벤트 상태 즉시 업데이트
-                                  setEvents(prevEvents => 
-                                    prevEvents.map(event => 
-                                      event.id === id 
-                                        ? {
-                                            ...event,
-                                            start: newStart.toISOString(),
-                                            end: newEnd.toISOString(),
-                                            layout: {
-                                              ...event.layout,
-                                              columnIndex: colIndex
-                                            }
+                                  const updatedEvents = events.map(event => 
+                                    event.id === id 
+                                      ? {
+                                          ...event,
+                                          start: newStart.toISOString(),
+                                          end: newEnd.toISOString(),
+                                          layout: {
+                                            ...event.layout,
+                                            columnIndex: colIndex
                                           }
-                                        : event
-                                    )
+                                        }
+                                      : event
                                   );
+                                  
+                                  // 이벤트를 찾지 못한 경우 에러 발생
+                                  if (!updatedEvents.some(e => e.id === id)) {
+                                    throw new Error("Event not found");
+                                  }
                                   
                                   onEventDrop(id, newStart, newEnd, colIndex);
                                 } catch (error) {
-                                  console.error("Drop error:", error);
+                                  console.error("Drop error:", error instanceof Error ? error.message : "Unknown error");
                                 }
                                 
                                 setDraggedOverInfo(null);
