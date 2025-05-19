@@ -35,6 +35,7 @@ export interface CalendarEvent {
     left: number; 
     width: number; 
     zIndex: number;
+    columnIndex?: number;
   };
 }
 
@@ -465,7 +466,7 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
               const durationMinutes = differenceInMinutes(effectiveEnd, effectiveStart);
               let eventHeight = (durationMinutes / 60) * HOUR_SLOT_HEIGHT_PX;
               eventHeight = Math.max(MIN_EVENT_HEIGHT_PX_DAY, eventHeight);
-              
+
               currentRowEventMaxHeight = Math.max(currentRowEventMaxHeight, eventHeight);
 
               const eventWidth = EVENT_WIDTH_PERCENTAGE_DAY;
@@ -519,7 +520,7 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
       }
       return differenceInMinutes(parseISO(b.end), parseISO(b.start)) - differenceInMinutes(parseISO(a.end), parseISO(a.start));
     });
-    
+
     const eventsToDisplay = sortedEvents;
     const eventLayouts: { [key: string]: CalendarEvent['layout'] } = {};
 
@@ -532,7 +533,7 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
         eventsToDisplay.forEach((event) => {
           const eventStartObj = parseISO(event.start);
           const eventEndObj = parseISO(event.end);
-          
+
           const startMinuteInHour = Math.max(0, differenceInMinutes(eventStartObj, hourStart));
           const endMinuteInHour = Math.min(60, differenceInMinutes(eventEndObj, hourStart));
 
@@ -583,9 +584,9 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
 
           const top = (differenceInMinutes(effectiveStart, hourStart) / 60) * slotHeight;
           const height = Math.max(MIN_EVENT_HEIGHT_PX_DAY, (differenceInMinutes(effectiveEnd, effectiveStart) / 60) * slotHeight - EVENT_GAP_PX);
-          
+
           const eventColumnIndex = columnAssignments[event.id] !== undefined ? columnAssignments[event.id] : 0;
-          
+
           const currentEventWidth = DAY_VIEW_EVENT_WIDTH_PERCENTAGE; // 명확하게 DAY_VIEW_EVENT_WIDTH_PERCENTAGE 사용
           const left = DAY_VIEW_EVENT_LEFT_MARGIN_PERCENTAGE + (eventColumnIndex * (currentEventWidth + EVENT_GAP_PX_X));
           const zIndex = 10 + eventColumnIndex;
@@ -596,6 +597,7 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
             left,
             width: currentEventWidth, // EventItem에 전달될 너비
             zIndex,
+            columnIndex: eventColumnIndex,
           };
         });
 
@@ -607,11 +609,11 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
 
             let effectiveStart = eventStartObj < hourStart ? hourStart : eventStartObj;
             let effectiveEnd = eventEndObj > hourEnd ? hourEnd : eventEndObj;
-            
+
             const topOffsetWithinHour = (differenceInMinutes(effectiveStart, hourStart) / 60) * slotHeight;
             let heightInPx = (differenceInMinutes(effectiveEnd, effectiveStart) / 60) * slotHeight;
             heightInPx = Math.max(MIN_EVENT_HEIGHT_PX, heightInPx - EVENT_GAP_PX);
-            
+
             eventLayouts[event.id] = {
                 top: topOffsetWithinHour,
                 height: heightInPx,
@@ -625,22 +627,33 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
 
     const renderedEventItems = eventsToDisplay.map(event => {
       const finalLayout = eventLayouts[event.id];
-      if (!finalLayout) return null;
+                  if (!finalLayout) return null;
 
-      return (
-        <EventItem
-          key={event.id}
-          event={{ ...event, layout: finalLayout }}
-          viewType={viewType}
-          highlightedEventId={highlightedEventId}
-          setHighlightedEventId={setHighlightedEventId}
-          onStartPt={onStartPt}
-          onEditPt={onEditPt}
-          onEditAppointment={onEditAppointment}
-          onToggleNoShow={onToggleNoShow}
-          onDeletePt={onDeletePt}
-        />
-      );
+                  // columnIndex가 있으면 그것을 우선 사용하고, 없으면 layout의 계산된 값 사용
+                  const columnIndex = event.layout?.columnIndex !== undefined ? event.layout.columnIndex : finalLayout.columnIndex;
+                  const left = DAY_VIEW_EVENT_LEFT_MARGIN_PERCENTAGE + (columnIndex * (DAY_VIEW_EVENT_WIDTH_PERCENTAGE + EVENT_GAP_PX_X));
+
+                  return (
+                    <EventItem
+                      key={event.id}
+                      event={{
+                        ...event,
+                        layout: {
+                          ...finalLayout,
+                          left,
+                          columnIndex // columnIndex 정보 유지
+                        }
+                      }}
+                      viewType={viewType}
+                      highlightedEventId={highlightedEventId}
+                      setHighlightedEventId={setHighlightedEventId}
+                      onStartPt={onStartPt}
+                      onEditPt={onEditPt}
+                      onEditAppointment={onEditAppointment}
+                      onToggleNoShow={onToggleNoShow}
+                      onDeletePt={onDeletePt}
+                    />
+                  );
     }).filter(Boolean);
 
     return renderedEventItems;
@@ -730,7 +743,7 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
                                     const eventId = eventData.id;
                                     const durationMinutes = eventData.durationMinutes;
                                     if (typeof eventId !== 'string' || typeof durationMinutes !== 'number') return;
-                                    
+
                                     // colIndex는 이벤트의 시각적 배치에 사용하고,
                                     // onEventDrop에는 시간 정보만 전달 (또는 필요시 onEventDrop 시그니처 변경)
                                     let newStart = setMinutes(setHours(startOfDay(day), hour), minute);
@@ -813,9 +826,9 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
                   .map(event => {
                     const eventStart = parseISO(event.start);
                     const eventEnd = parseISO(event.end);
-                    
+
                     const startMinutesInDay = getHours(eventStart) * 60 + getMinutes(eventStart);
-                    
+
                     // Calculate top position based on dynamic slot heights up to the event's start hour
                     let topOffsetPx = 0;
                     for(let h=0; h < getHours(eventStart); h++) {
@@ -992,5 +1005,3 @@ export function ScheduleCalendar(props: ScheduleCalendarProps): JSX.Element {
     </div>
   );
 }
-
-

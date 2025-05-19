@@ -276,7 +276,7 @@ const SchedulePage = () => {
           if (!activeMemberships || activeMemberships.length === 0) {
             throw new Error("해당 회원의 유효한 (잔여 세션이 있는) 멤버십 정보를 찾을 수 없습니다.");
           }
-          
+
           const targetMembership = activeMemberships[0];
           membershipId = targetMembership.id;
 
@@ -524,11 +524,11 @@ const SchedulePage = () => {
 
       // console.log('[handleDeletePt] Supabase delete successful.'); // 로그 제거
       toast({ title: "성공", description: "예약이 삭제되었습니다." });
-  
+
     // triggerRefetch() 대신 직접 상태 업데이트
     setEvents(prevEvents => prevEvents.filter(event => event.id !== deletingEvent.id));
     // console.log('[handleDeletePt] Events state updated locally.'); // 로그 제거
-  
+
     } catch (error: any) {
       console.error("Error deleting session:", error);
       toast({ title: "오류", description: error.message || "예약 삭제 중 오류 발생", variant: "destructive" });
@@ -660,6 +660,26 @@ const SchedulePage = () => {
                     : event
                 )
               );
+
+      // Database update logic (example, adjust table/column names as needed)
+      // This should ideally be handled by the parent component that owns the events data and supabase client usage.
+      // For demonstration, placing a simplified version here.
+      try {
+        // All event types are assumed to be in 'pt_sessions' based on fetchEvents and other handlers
+        // The 'type' field distinguishes between PT, 상담, 측정, etc.
+        // The primary key for pt_sessions is 'id' (as per CalendarEvent.id and fetchEvents)
+
+        const { error } = await supabase
+          .from('pt_sessions')
+          .update({
+            start_time: newStart.toISOString(), // Use 'start_time'
+            end_time: newEnd.toISOString(),   // Use 'end_time'
+            calendar_column_index: columnIndex, // 드롭된 칼럼 인덱스 저장
+          })
+          .eq('id', eventId); // eventId is pt_sessions.id
+      } catch (error) {
+        console.error("Error updating pt_sessions table:", error);
+      }
             }}
           />
         </div>
@@ -669,7 +689,7 @@ const SchedulePage = () => {
         onClose={() => setIsNewAppointmentModalOpen(false)}
         onSave={handleSaveAppointment}
       />
- 
+
       {/* 예약 수정 모달 */}
       <EditAppointmentModal
         isOpen={isEditAppointmentModalOpen}
@@ -677,7 +697,7 @@ const SchedulePage = () => {
         onSave={handleUpdateAppointment}
         appointment={editingAppointment}
       />
- 
+
       {/* 예약 삭제 확인 다이얼로그 */}
       <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
         <AlertDialogContent>
@@ -703,6 +723,5 @@ const SchedulePage = () => {
     </AppLayout>
   );
 };
- 
-export default SchedulePage;
 
+export default SchedulePage;
