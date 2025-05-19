@@ -799,9 +799,6 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
                     )}
                   </div>
                 ))}
-                    ) : (
-                      // Week view: 기존 10분 단위 슬롯 렌더링 (가로 구분 없음)
-                      // Week view에서는 columnIndex가 없으므로 draggedOverInfo 설정 시 주의
                       Array.from({ length: 6 }).map((_, minuteIndex) => {
                         const minute = minuteIndex * 10;
                         return (
