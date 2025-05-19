@@ -696,14 +696,56 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
                   >
                     {/* 가로 4칸으로 나누기 (day view에만 적용) */}
                     {viewType === 'day' ? (
-                      Array.from({ length: 2 }).map((_, colIndex) => (
-                        <div
-                          key={`day-col-${hour}-${colIndex}`}
-                          className={cn(
-                            "flex-1 flex flex-col", // 각 칸이 세로로 10분 슬롯을 가짐
-                            colIndex < 3 && "border-r border-gray-300 dark:border-gray-600" // 마지막 칸 제외하고 오른쪽에 구분선
-                          )}
-                        >
+                      <div className="flex w-full h-full">
+                        <div className="flex-1 grid grid-cols-2 gap-1">
+                          {[0, 1].map((colIndex) => (
+                            <div
+                              key={`day-col-${hour}-${colIndex}`}
+                              className={cn(
+                                "h-full border border-dashed border-gray-200 dark:border-gray-700 rounded-md",
+                                "transition-colors duration-200 ease-in-out",
+                                draggedOverInfo?.columnIndex === colIndex && 
+                                draggedOverInfo?.hour === hour && 
+                                "bg-green-100/50 dark:bg-green-900/30"
+                              )}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                setDraggedOverInfo({ 
+                                  day, 
+                                  hour, 
+                                  minute: 0,
+                                  columnIndex: colIndex 
+                                });
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                const data = e.dataTransfer.getData("application/json");
+                                if (!data) return;
+                                
+                                try {
+                                  const eventData = JSON.parse(data);
+                                  const { id, durationMinutes } = eventData;
+                                  
+                                  const newStart = setMinutes(setHours(startOfDay(day), hour), 0);
+                                  const newEnd = addMinutes(newStart, durationMinutes);
+                                  
+                                  onEventDrop(id, newStart, newEnd, colIndex);
+                                } catch (error) {
+                                  console.error("Drop error:", error);
+                                }
+                                
+                                setDraggedOverInfo(null);
+                              }}
+                              onDragLeave={() => {
+                                if (draggedOverInfo?.columnIndex === colIndex) {
+                                  setDraggedOverInfo(null);
+                                }
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
                           {/* 각 칸 내부에 10분 단위 슬롯 렌더링 */}
                           {Array.from({ length: 6 }).map((_, minuteIndex) => {
                             const minute = minuteIndex * 10;
