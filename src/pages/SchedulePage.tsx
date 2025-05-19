@@ -553,6 +553,31 @@ const SchedulePage = () => {
   // }, [deletingEvent, toast, triggerRefetch, callSupabaseTool]); // callSupabaseTool 의존성 제거
   }, [deletingEvent, toast]);
 
+  const handleEventDrop = async (eventId: string, newStart: Date, newEnd: Date, columnIndex?: number) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('pt_sessions')
+        .update({
+          start_time: newStart.toISOString(),
+          end_time: newEnd.toISOString(),
+          calendar_column_index: columnIndex
+        })
+        .eq('id', eventId);
+
+      if (error) {
+        toast({ title: "오류", description: error.message, variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "성공", description: "일정이 업데이트되었습니다." });
+      // 이벤트 드롭 후 데이터 다시 불러오기
+      await fetchEvents();
+    } catch (error: any) {
+      toast({ title: "오류", description: error.message, variant: "destructive" });
+    }
+  };
+
 
   return (
     <AppLayout>
@@ -642,45 +667,7 @@ const SchedulePage = () => {
             onEditAppointment={handleEditAppointment} // 예약 수정 핸들러 전달
             onToggleNoShow={handleToggleNoShow}
             onDeletePt={openDeleteConfirm}
-            onEventDrop={async (eventId, newStart, newEnd, columnIndex) => {
-              // 디버깅: 드롭 정보 출력
-              console.log('[onEventDrop] eventId:', eventId, 'newStart:', newStart, 'newEnd:', newEnd, 'columnIndex:', columnIndex);
-              setEvents(prevEvents =>
-                prevEvents.map(event =>
-                  event.id === eventId
-                    ? {
-                        ...event,
-                        start: newStart.toISOString(),
-                        end: newEnd.toISOString(),
-                        layout: {
-                          ...event.layout,
-                          columnIndex: typeof columnIndex === 'number' ? columnIndex : undefined,
-                        },
-                      }
-                    : event
-                )
-              );
-
-              try {
-                const { error } = await supabase
-                  .from('pt_sessions')
-                  .update({
-                    start_time: newStart.toISOString(),
-                    end_time: newEnd.toISOString(),
-                    calendar_column_index: columnIndex,
-                  })
-                  .eq('id', eventId);
-                
-                if (error) throw error;
-              } catch (error) {
-                console.error("Error updating pt_sessions table:", error);
-                toast({ 
-                  title: "오류", 
-                  description: "일정 업데이트 중 오류가 발생했습니다.", 
-                  variant: "destructive" 
-                });
-              }
-            }}
+            onEventDrop={handleEventDrop}
           />
         </div>
       </div>
