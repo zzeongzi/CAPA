@@ -729,6 +729,23 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
                                   const newStart = setMinutes(setHours(startOfDay(day), hour), 0);
                                   const newEnd = addMinutes(newStart, durationMinutes);
                                   
+                                  // 이벤트 상태 즉시 업데이트
+                                  setEvents(prevEvents => 
+                                    prevEvents.map(event => 
+                                      event.id === id 
+                                        ? {
+                                            ...event,
+                                            start: newStart.toISOString(),
+                                            end: newEnd.toISOString(),
+                                            layout: {
+                                              ...event.layout,
+                                              columnIndex: colIndex
+                                            }
+                                          }
+                                        : event
+                                    )
+                                  );
+                                  
                                   onEventDrop(id, newStart, newEnd, colIndex);
                                 } catch (error) {
                                   console.error("Drop error:", error);
