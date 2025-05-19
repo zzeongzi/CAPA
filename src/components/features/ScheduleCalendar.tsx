@@ -746,63 +746,59 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
                         </div>
                       </div>
                     ) : (
-                          {/* 각 칸 내부에 10분 단위 슬롯 렌더링 */}
-                          {Array.from({ length: 6 }).map((_, minuteIndex) => {
-                            const minute = minuteIndex * 10;
-                            return (
-                              <div
-                                key={`minute-slot-${day.toISOString()}-${hour}-${colIndex}-${minute}`}
-                                data-minute={minute}
-                                data-col={colIndex}
-                                className={cn(
-                                  "flex-1 border-b border-dashed border-gray-200 dark:border-gray-700 last:border-b-0",
-                                  draggedOverInfo &&
-                                  isSameDay(draggedOverInfo.day, day) &&
-                                  draggedOverInfo.hour === hour &&
-                                  draggedOverInfo.minute === minute &&
-                                  draggedOverInfo.columnIndex === colIndex && // columnIndex 일치 확인
-                                  "bg-green-100 dark:bg-green-700 opacity-75"
-                                )}
-                                style={{ minHeight: `${(hourSlotHeights[hour] || HOUR_SLOT_HEIGHT_PX) / 6}px` }}
-                                onDragOver={(e) => {
-                                  e.preventDefault();
-                                  setDraggedOverInfo({ day, hour, minute: minute, columnIndex: colIndex });
-                                  e.dataTransfer.dropEffect = "move";
-                                }}
-                                onDrop={(e) => {
-                                  e.preventDefault();
-                                  setDraggedOverInfo(null);
-                                  const eventDataString = e.dataTransfer.getData("application/json");
-                                  if (!eventDataString) return;
-                                  try {
-                                    const eventData = JSON.parse(eventDataString);
-                                    const eventId = eventData.id;
-                                    const durationMinutes = eventData.durationMinutes;
-                                    if (typeof eventId !== 'string' || typeof durationMinutes !== 'number') return;
-
-                                    // 드롭된 시간과 칼럼 인덱스 처리
-                                    let newStart = setMinutes(setHours(startOfDay(day), hour), minute);
-                                    let newEnd = addMinutes(newStart, durationMinutes);
-                                    
-                                    // console.log('Drop event:', { eventId, colIndex, newStart, newEnd });
-                                    const endOfDropDay = endOfDay(day);
-                                    if (newEnd > endOfDropDay) {
-                                        newEnd = endOfDropDay;
-                                        if (newStart >= newEnd) {
-                                           newStart = subMinutes(newEnd, Math.max(10, durationMinutes));
-                                           if (newStart < startOfDay(day)) newStart = startOfDay(day);
-                                        }
+                      // Week view: 기존 10분 단위 슬롯 렌더링 (가로 구분 없음)
+                      // Week view에서는 columnIndex가 없으므로 draggedOverInfo 설정 시 주의
+                      Array.from({ length: 6 }).map((_, minuteIndex) => {
+                        const minute = minuteIndex * 10;
+                        return (
+                          <div
+                            key={`minute-slot-week-${day.toISOString()}-${hour}-${minute}`}
+                            data-minute={minute}
+                            className={cn(
+                              "flex-1 border-b border-dashed border-gray-200 dark:border-gray-700 last:border-b-0",
+                              draggedOverInfo &&
+                              isSameDay(draggedOverInfo.day, day) &&
+                              draggedOverInfo.hour === hour &&
+                              draggedOverInfo.minute === minute &&
+                              draggedOverInfo.columnIndex === undefined && // week view에서는 columnIndex가 없음
+                              "bg-green-100 dark:bg-green-700 opacity-75"
+                            )}
+                            style={{ minHeight: `${(hourSlotHeights[hour] || HOUR_SLOT_HEIGHT_PX) / 6}px` }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              setDraggedOverInfo({ day, hour, minute: minute }); // columnIndex 없이 설정
+                              e.dataTransfer.dropEffect = "move";
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              setDraggedOverInfo(null);
+                              const eventDataString = e.dataTransfer.getData("application/json");
+                              if (!eventDataString) return;
+                              try {
+                                const eventData = JSON.parse(eventDataString);
+                                const eventId = eventData.id;
+                                const durationMinutes = eventData.durationMinutes;
+                                if (typeof eventId !== 'string' || typeof durationMinutes !== 'number') return;
+                                let newStart = setMinutes(setHours(startOfDay(day), hour), minute);
+                                let newEnd = addMinutes(newStart, durationMinutes);
+                                const endOfDropDay = endOfDay(day);
+                                if (newEnd > endOfDropDay) {
+                                    newEnd = endOfDropDay;
+                                    if (newStart >= newEnd) {
+                                       newStart = subMinutes(newEnd, Math.max(10, durationMinutes));
+                                       if (newStart < startOfDay(day)) newStart = startOfDay(day);
                                     }
-                                    // onEventDrop에 columnIndex 전달
-                                    onEventDrop(eventId, newStart, newEnd, colIndex);
-                                  } catch (error) { console.error("Drop error:", error); }
-                                }}
-                                onDragLeave={() => setDraggedOverInfo(null) }
-                              />
-                            );
-                          })}
-                        </div>
-                      ))
+                                }
+                                onEventDrop(eventId, newStart, newEnd); // Week view에서는 columnIndex 불필요
+                              } catch (error) { console.error("Drop error:", error); }
+                            }}
+                            onDragLeave={() => setDraggedOverInfo(null)}
+                          />
+                        );
+                      })
+                    )}
+                  </div>
+                ))}
                     ) : (
                       // Week view: 기존 10분 단위 슬롯 렌더링 (가로 구분 없음)
                       // Week view에서는 columnIndex가 없으므로 draggedOverInfo 설정 시 주의
