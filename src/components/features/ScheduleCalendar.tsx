@@ -636,9 +636,11 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
       const finalLayout = eventLayouts[event.id];
                   if (!finalLayout) return null;
 
-                  // columnIndex가 있으면 그것을 우선 사용하고, 없으면 layout의 계산된 값 사용
+                  // 이벤트의 기존 columnIndex를 우선 사용
                   const columnIndex = event.layout?.columnIndex !== undefined ? event.layout.columnIndex : finalLayout.columnIndex;
                   const left = DAY_VIEW_EVENT_LEFT_MARGIN_PERCENTAGE + (columnIndex * (DAY_VIEW_EVENT_WIDTH_PERCENTAGE + EVENT_GAP_PX_X));
+
+                  // console.log('Event layout:', event.id, { columnIndex, left, finalLayout });
 
                   return (
                     <EventItem
@@ -751,10 +753,11 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
                                     const durationMinutes = eventData.durationMinutes;
                                     if (typeof eventId !== 'string' || typeof durationMinutes !== 'number') return;
 
-                                    // colIndex는 이벤트의 시각적 배치에 사용하고,
-                                    // onEventDrop에는 시간 정보만 전달 (또는 필요시 onEventDrop 시그니처 변경)
+                                    // 드롭된 시간과 칼럼 인덱스 처리
                                     let newStart = setMinutes(setHours(startOfDay(day), hour), minute);
                                     let newEnd = addMinutes(newStart, durationMinutes);
+                                    
+                                    // console.log('Drop event:', { eventId, colIndex, newStart, newEnd });
                                     const endOfDropDay = endOfDay(day);
                                     if (newEnd > endOfDropDay) {
                                         newEnd = endOfDropDay;
