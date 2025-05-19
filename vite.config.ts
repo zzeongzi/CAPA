@@ -10,8 +10,9 @@ import { configDefaults } from 'vitest/config';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    // host: "192.168.35.75", // 특정 IP 주소 대신 모든 인터페이스에서 수신하도록 주석 처리 또는 삭제
-    port: 8082, // capacitor.config.ts와 동일한 포트로 변경
+    host: "0.0.0.0",
+    port: 5000,
+    strictPort: true,
   },
   plugins: [
     react(),
