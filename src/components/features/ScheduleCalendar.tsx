@@ -439,19 +439,20 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
   }, [date, viewType]);
 
   useEffect(() => {
-    const newSlotHeights: Record<number, number> = {};
-    hours.forEach(hour => {
-      let maxHourHeight = HOUR_SLOT_HEIGHT_PX;
-      days.forEach(day => {
-        const hourStart = setMinutes(setHours(startOfDay(day), hour), 0);
-        const hourEnd = setMinutes(setHours(startOfDay(day), hour + 1), 0);
-        const relevantEvents = events.filter(event => {
-          const eventStart = parseISO(event.start);
-          const eventEnd = parseISO(event.end);
-          return isSameDay(eventStart, day) && eventStart < hourEnd && eventEnd > hourStart;
-        });
+    const calculateNewSlotHeights = () => {
+      const newSlotHeights: Record<number, number> = {};
+      hours.forEach(hour => {
+        let maxHourHeight = HOUR_SLOT_HEIGHT_PX;
+        days.forEach(day => {
+          const hourStart = setMinutes(setHours(startOfDay(day), hour), 0);
+          const hourEnd = setMinutes(setHours(startOfDay(day), hour + 1), 0);
+          const relevantEvents = events.filter(event => {
+            const eventStart = parseISO(event.start);
+            const eventEnd = parseISO(event.end);
+            return isSameDay(eventStart, day) && eventStart < hourEnd && eventEnd > hourStart;
+          });
 
-        if (relevantEvents.length > 0) {
+          if (relevantEvents.length > 0) {
           let currentDayHourHeight = 0;
           if (viewType === 'day') {
             let accumulatedPixelWidth = EVENT_LEFT_PERCENTAGE;
@@ -496,9 +497,15 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
         }
       });
       newSlotHeights[hour] = Math.max(HOUR_SLOT_HEIGHT_PX, maxHourHeight);
-    });
-    setHourSlotHeights(newSlotHeights);
-  }, [events, days, viewType, hours]);
+      });
+      return newSlotHeights;
+    };
+    
+    const newHeights = calculateNewSlotHeights();
+    if (JSON.stringify(newHeights) !== JSON.stringify(hourSlotHeights)) {
+      setHourSlotHeights(newHeights);
+    }
+  }, [events, days, viewType, hours, hourSlotHeights]);
 
 
   const renderEventsForHour = (day: Date, hour: number, slotHeight: number) => {
