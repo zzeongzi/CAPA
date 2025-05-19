@@ -951,7 +951,7 @@ export function ScheduleCalendar(props: ScheduleCalendarProps): JSX.Element {
         .update({
           start_time: newStart.toISOString(),
           end_time: newEnd.toISOString(),
-          column_index: columnIndex // column_index 필드 추가
+          calendar_column_index: columnIndex // calendar_column_index 필드로 수정
         })
         .eq('id', eventId)
         .select();
