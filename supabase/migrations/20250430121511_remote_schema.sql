@@ -694,7 +694,8 @@ CREATE TABLE IF NOT EXISTS "public"."pt_sessions" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "type" "text" DEFAULT 'PT'::"text",
     "background_color" "text",
-    "workout_session_id" "uuid"
+    "workout_session_id" "uuid",
+    "calendar_column_index" integer
 );
 
 
