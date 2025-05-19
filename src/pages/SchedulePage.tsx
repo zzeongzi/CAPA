@@ -642,7 +642,7 @@ const SchedulePage = () => {
             onEditAppointment={handleEditAppointment} // 예약 수정 핸들러 전달
             onToggleNoShow={handleToggleNoShow}
             onDeletePt={openDeleteConfirm}
-            onEventDrop={(eventId, newStart, newEnd, columnIndex) => {
+            onEventDrop={async (eventId, newStart, newEnd, columnIndex) => {
               // 디버깅: 드롭 정보 출력
               console.log('[onEventDrop] eventId:', eventId, 'newStart:', newStart, 'newEnd:', newEnd, 'columnIndex:', columnIndex);
               setEvents(prevEvents =>
@@ -661,25 +661,25 @@ const SchedulePage = () => {
                 )
               );
 
-      // Database update logic (example, adjust table/column names as needed)
-      // This should ideally be handled by the parent component that owns the events data and supabase client usage.
-      // For demonstration, placing a simplified version here.
-      try {
-        // All event types are assumed to be in 'pt_sessions' based on fetchEvents and other handlers
-        // The 'type' field distinguishes between PT, 상담, 측정, etc.
-        // The primary key for pt_sessions is 'id' (as per CalendarEvent.id and fetchEvents)
-
-        const { error } = await supabase
-          .from('pt_sessions')
-          .update({
-            start_time: newStart.toISOString(), // Use 'start_time'
-            end_time: newEnd.toISOString(),   // Use 'end_time'
-            calendar_column_index: columnIndex, // 드롭된 칼럼 인덱스 저장
-          })
-          .eq('id', eventId); // eventId is pt_sessions.id
-      } catch (error) {
-        console.error("Error updating pt_sessions table:", error);
-      }
+              try {
+                const { error } = await supabase
+                  .from('pt_sessions')
+                  .update({
+                    start_time: newStart.toISOString(),
+                    end_time: newEnd.toISOString(),
+                    calendar_column_index: columnIndex,
+                  })
+                  .eq('id', eventId);
+                
+                if (error) throw error;
+              } catch (error) {
+                console.error("Error updating pt_sessions table:", error);
+                toast({ 
+                  title: "오류", 
+                  description: "일정 업데이트 중 오류가 발생했습니다.", 
+                  variant: "destructive" 
+                });
+              }
             }}
           />
         </div>
