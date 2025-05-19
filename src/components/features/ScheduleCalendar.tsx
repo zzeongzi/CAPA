@@ -402,8 +402,8 @@ const EVENT_GAP_PX = 2;
 const EVENT_GAP_PX_X = 1; 
 const EVENT_WIDTH_PERCENTAGE = 85; // 너비 추가 조정
 const EVENT_LEFT_PERCENTAGE = 0;
-const MAX_EVENTS_PER_ROW_DAY = 4; // 한 줄에 표시될 최대 이벤트 수 (Day View 가로 칸 수)
-const DAY_VIEW_EVENT_WIDTH_PERCENTAGE = 25; // Day View에서 각 이벤트의 너비
+const MAX_EVENTS_PER_ROW_DAY = 2; // 한 줄에 표시될 최대 이벤트 수 (Day View 가로 칸 수)
+const DAY_VIEW_EVENT_WIDTH_PERCENTAGE = 49; // Day View에서 각 이벤트의 너비
 const DAY_VIEW_EVENT_LEFT_MARGIN_PERCENTAGE = 1; // Day View 이벤트 왼쪽 마진
 const EVENT_WIDTH_PERCENTAGE_DAY = Math.floor((100 - (EVENT_LEFT_PERCENTAGE * 2) - (EVENT_GAP_PX_X * (MAX_EVENTS_PER_ROW_DAY -1 ))) / MAX_EVENTS_PER_ROW_DAY) ;
 
@@ -547,27 +547,18 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
           let assignedColumn = -1;
           const preferredColumn = (event.layout as { columnIndex?: number })?.columnIndex;
 
-          // 1. 드롭된 이벤트의 경우 (preferredColumn이 존재): 해당 칸에 강제 할당 (겹침 허용)
+          // 드롭된 이벤트의 경우 해당 칸에 할당
           if (preferredColumn !== undefined && preferredColumn >= 0 && preferredColumn < MAX_EVENTS_PER_ROW_DAY) {
             assignedColumn = preferredColumn;
           } else {
-            // 2. 일반적인 이벤트 배치 또는 preferredColumn이 없는 경우: 가장 왼쪽의 빈 칸부터 할당
-            for (let col = 0; col < MAX_EVENTS_PER_ROW_DAY; col++) {
-              let isColumnAvailable = true;
-              for (let m = startMinuteInHour; m < endMinuteInHour; m++) {
-                if (occupiedColumns[m]?.[col]) {
-                  isColumnAvailable = false;
-                  break;
-                }
-              }
-              if (isColumnAvailable) {
-                assignedColumn = col;
-                break;
-              }
+            // 첫 번째 빈 칸에 할당
+            assignedColumn = 0;
+            if (occupiedColumns[startMinuteInHour]?.[0]) {
+              assignedColumn = 1;
             }
-            // 3. 모든 칸이 이미 차있는 경우: 가장 왼쪽 칸(0)에 겹쳐서 할당 (또는 마지막 칸)
-            if (assignedColumn === -1) {
-              assignedColumn = 0; // 또는 MAX_EVENTS_PER_ROW_DAY - 1
+            // 두 칸 모두 차있으면 첫 번째 칸에 배치
+            if (occupiedColumns[startMinuteInHour]?.[1]) {
+              assignedColumn = 0;
             }
           }
 
@@ -711,7 +702,7 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
                   >
                     {/* 가로 4칸으로 나누기 (day view에만 적용) */}
                     {viewType === 'day' ? (
-                      Array.from({ length: 4 }).map((_, colIndex) => (
+                      Array.from({ length: 2 }).map((_, colIndex) => (
                         <div
                           key={`day-col-${hour}-${colIndex}`}
                           className={cn(
