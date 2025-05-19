@@ -799,57 +799,6 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
                     )}
                   </div>
                 ))}
-                      Array.from({ length: 6 }).map((_, minuteIndex) => {
-                        const minute = minuteIndex * 10;
-                        return (
-                          <div
-                            key={`minute-slot-week-${day.toISOString()}-${hour}-${minute}`}
-                            data-minute={minute}
-                            className={cn(
-                              "flex-1 border-b border-dashed border-gray-200 dark:border-gray-700 last:border-b-0",
-                              draggedOverInfo &&
-                              isSameDay(draggedOverInfo.day, day) &&
-                              draggedOverInfo.hour === hour &&
-                              draggedOverInfo.minute === minute &&
-                              draggedOverInfo.columnIndex === undefined && // week view에서는 columnIndex가 없음
-                              "bg-green-100 dark:bg-green-700 opacity-75"
-                            )}
-                            style={{ minHeight: `${(hourSlotHeights[hour] || HOUR_SLOT_HEIGHT_PX) / 6}px` }}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              setDraggedOverInfo({ day, hour, minute: minute }); // columnIndex 없이 설정
-                              e.dataTransfer.dropEffect = "move";
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              setDraggedOverInfo(null);
-                              const eventDataString = e.dataTransfer.getData("application/json");
-                              if (!eventDataString) return;
-                              try {
-                                const eventData = JSON.parse(eventDataString);
-                                const eventId = eventData.id;
-                                const durationMinutes = eventData.durationMinutes;
-                                if (typeof eventId !== 'string' || typeof durationMinutes !== 'number') return;
-                                let newStart = setMinutes(setHours(startOfDay(day), hour), minute);
-                                let newEnd = addMinutes(newStart, durationMinutes);
-                                const endOfDropDay = endOfDay(day);
-                                if (newEnd > endOfDropDay) {
-                                    newEnd = endOfDropDay;
-                                    if (newStart >= newEnd) {
-                                       newStart = subMinutes(newEnd, Math.max(10, durationMinutes));
-                                       if (newStart < startOfDay(day)) newStart = startOfDay(day);
-                                    }
-                                }
-                                onEventDrop(eventId, newStart, newEnd); // Week view에서는 columnIndex 불필요
-                              } catch (error) { console.error("Drop error:", error); }
-                            }}
-                            onDragLeave={() => setDraggedOverInfo(null)}
-                          />
-                        );
-                      })
-                    )}
-                  </div>
-                ))}
                 {/* Render all events for the current day directly into the day column */}
                 {events
                   .filter(event => isSameDay(parseISO(event.start), day))
