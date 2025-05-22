@@ -34,6 +34,10 @@ import FeedbackPage from "./pages/FeedbackPage";
 import DeveloperFeedbackPage from "./pages/DeveloperFeedbackPage";
 import AnnouncementsPage from "./pages/admin/AnnouncementsPage";
 import UserAnnouncementsPage from "./pages/UserAnnouncementsPage"; // 일반 사용자용 공지사항 페이지 import
+import WorkoutTemplatesPage from "@/pages/trainer/WorkoutTemplatesPage"; // Workout Templates Page
+import CreateEditWorkoutTemplatePage from "@/pages/trainer/CreateEditWorkoutTemplatePage"; // Create/Edit Workout Template Page
+import AssignTemplateToMemberPage from "@/pages/trainer/AssignTemplateToMemberPage"; // Assign Workout Page
+import AssignedWorkoutPage from "@/pages/member/AssignedWorkoutPage"; // Member's assigned workout page
 
 const AppRoutes = () => {
   const navigate = useNavigate();
@@ -68,6 +72,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <CenterSelectionPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Member specific workout view */}
+      <Route 
+        path="/member/workout/:workoutSessionId"
+        element={
+          <ProtectedRoute>
+            <AssignedWorkoutPage />
           </ProtectedRoute>
         }
       />
@@ -283,6 +297,40 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <ConsultationPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Trainer Workout Templates Routes */}
+      <Route
+        path="/trainer/templates"
+        element={
+          <ProtectedRoute>
+            <WorkoutTemplatesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trainer/templates/new"
+        element={
+          <ProtectedRoute>
+            <CreateEditWorkoutTemplatePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trainer/templates/edit/:templateId"
+        element={
+          <ProtectedRoute>
+            <CreateEditWorkoutTemplatePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trainer/assign-workout"
+        element={
+          <ProtectedRoute>
+            <AssignTemplateToMemberPage />
           </ProtectedRoute>
         }
       />

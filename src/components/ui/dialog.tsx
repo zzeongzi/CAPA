@@ -95,7 +95,7 @@ const DialogTitle = React.forwardRef<
 DialogTitle.displayName = DialogPrimitive.Title.displayName
 
 const DialogDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.Ref<React.ElementRef<typeof DialogPrimitive.Description>>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
@@ -105,6 +105,18 @@ const DialogDescription = React.forwardRef<
   />
 ))
 DialogDescription.displayName = DialogPrimitive.Description.displayName
+
+const DialogBody = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("p-6 pt-0", className)} // Adjusted padding if header/footer have their own
+    {...props}
+  />
+));
+DialogBody.displayName = "DialogBody";
 
 export {
   Dialog,
@@ -117,4 +129,5 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
+  DialogBody, // Export DialogBody
 }
