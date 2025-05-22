@@ -35,6 +35,7 @@ export interface CalendarEvent {
     left: number; 
     width: number; 
     zIndex: number;
+    columnIndex?: number; // columnIndex 추가
   };
 }
 
@@ -56,7 +57,7 @@ interface ScheduleCalendarProps {
 
 interface EventItemProps {
   event: CalendarEvent;
-  viewType: 'day' | 'week' | 'month';
+  viewType: 'day' | 'week' | 'month' | 'week-list';
   highlightedEventId?: string | null;
   setHighlightedEventId?: React.Dispatch<React.SetStateAction<string | null>>;
   onStartPt: (event: CalendarEvent) => void;
@@ -102,8 +103,17 @@ const EventItem: React.FC<EventItemProps> = ({
           <>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" className="w-full h-12 flex items-center justify-center text-base text-green-700 border-green-500 hover:bg-green-100 hover:border-green-600 hover:text-green-700" onClick={(e) => { e.stopPropagation(); onStartPt(event); setIsDetailModalOpen(false); }}>
-                  <Play className="mr-2 h-6 w-6" /> PT 시작
+                <Button
+                  variant="outline"
+                  className="w-full h-12 flex items-center justify-center text-base"
+                  style={{
+                    color: event.backgroundColor || 'inherit',
+                    borderColor: event.borderColor || 'currentColor',
+                    // hover styles can be handled by Tailwind's hover:bg-opacity or custom CSS if needed
+                  }}
+                  onClick={(e) => { e.stopPropagation(); onStartPt(event); setIsDetailModalOpen(false); }}
+                >
+                  <Play className="mr-2 h-6 w-6" /> {event.type} 시작
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>PT 시작</p></TooltipContent>
@@ -192,15 +202,15 @@ const EventItem: React.FC<EventItemProps> = ({
   };
 
   const dynamicStyle: React.CSSProperties =
-    viewType === 'month' || !event.layout
-      ? { ...eventItemStyle }
-      : {
+    viewType === 'month' || viewType === 'week' || viewType === 'week-list' || !event.layout
+      ? { ...eventItemStyle } // For month, week, week-list, or if layout is missing, use basic style
+      : { // This will now only apply to 'day' view if event.layout exists
           ...eventItemStyle,
           position: 'absolute',
           top: `${event.layout.top}px`,
           height: `${event.layout.height}px`,
           left: `${event.layout.left}%`,
-          width: viewType === 'day' ? `${DAY_VIEW_EVENT_WIDTH_PERCENTAGE}%` : `${event.layout.width}%`, // Day view일 때 너비 강제 설정
+          width: `${event.layout.width}%`, // Use layout width for day view
           zIndex: event.layout.zIndex,
         };
 
@@ -224,11 +234,10 @@ const EventItem: React.FC<EventItemProps> = ({
             e.dataTransfer.effectAllowed = "move";
           }}
           className={cn(
-            "rounded cursor-grab flex overflow-hidden border-black dark:border-white",
-            // viewType === 'month' 조건은 dynamicStyle에서 position으로 처리하므로 여기서는 제거 가능,
-            // 또는 month view일 때만 특정 스타일을 유지하고 싶다면 남겨둘 수 있음.
-            // day/week view에서는 absolute positioning을 사용하므로, width는 dynamicStyle에서 제어.
-            viewType === 'month' ? "relative mb-0.5 shadow-sm" : "absolute shadow-md",
+            "rounded cursor-grab flex border-black dark:border-white overflow-hidden", // Add overflow-hidden here
+            (viewType === 'month' || viewType === 'week' || viewType === 'week-list')
+              ? "w-full relative min-h-[24px] mb-0.5 shadow-sm"
+              : "absolute shadow-md", // day view
             highlightedEventId === event.id && "ring-2 ring-offset-2 ring-primary"
           )}
           style={dynamicStyle} // dynamicStyle에서 width를 %로 설정하므로, className에서 w-full 등의 클래스 제거 확인
@@ -237,15 +246,16 @@ const EventItem: React.FC<EventItemProps> = ({
         >
           <div
             className={cn(
-              viewType === 'month' ? 'w-1.5 absolute top-0 left-0 bottom-0' : 'w-1.5 flex-shrink-0',
+              (viewType === 'month' || viewType === 'week' || viewType === 'week-list') ? 'w-1.5 absolute top-0 left-0 bottom-0' : 'w-1.5 flex-shrink-0',
               "h-full z-20",
               barColor
             )}
           ></div>
           <div
             className={cn(
-              "flex-grow p-1 overflow-hidden",
-              viewType === 'month' ? 'ml-1.5' : '',
+              "flex-grow p-1",
+              (viewType === 'month' || viewType === 'week' || viewType === 'week-list') && 'ml-1.5',
+              (viewType !== 'week' && viewType !== 'week-list') && "overflow-hidden", // week, week-list일 때는 overflow-hidden 제거
               titleTextColor
             )}
           >
@@ -259,18 +269,34 @@ const EventItem: React.FC<EventItemProps> = ({
                     {event.title}
                   </span>
                 </>
-              ) : viewType === 'day' ? (
-                 <div className="flex items-center justify-between h-full w-full leading-tight">
-                  <span className={cn("truncate text-xs", event.status === 'completed' && "opacity-70", titleTextColor)} >
+              ) : (viewType === 'day') ? (
+                <div className="flex justify-between items-center h-full w-full leading-tight p-1"> {/* p-1 추가로 내부 여백 */}
+                  <span className={cn("text-base font-medium", titleTextColor)}> {/* 시간 표시, 크기 증가 */}
+                    {format(parseISO(event.start), 'HH:mm')}
+                  </span>
+                  <div className="flex flex-col items-end ml-2"> {/* 회원 이름 및 예약 종류, 오른쪽 정렬 및 왼쪽 마진 */}
+                    <span className={cn("text-base", event.status === 'completed' && "opacity-70", titleTextColor, "whitespace-normal text-right")} > {/* 크기 증가, 오른쪽 정렬 */}
+                      {event.title}
+                    </span>
+                    {statusText &&
+                      <span className={cn("text-base font-medium", statusTextColor, event.status === 'completed' && "opacity-70", "whitespace-normal text-right")} > {/* 크기 증가, 오른쪽 정렬 */}
+                        {statusText}
+                      </span>
+                    }
+                  </div>
+                </div>
+              ) : (viewType === 'week' || viewType === 'week-list') ? (
+                <div className="flex justify-between items-center h-full w-full leading-tight">
+                  <span className={cn("text-sm truncate", event.status === 'completed' && "opacity-70", titleTextColor, "whitespace-nowrap")}>
                     {event.title}
                   </span>
                   {statusText &&
-                    <span className={cn("text-xs font-medium whitespace-nowrap ml-1", statusTextColor, event.status === 'completed' && "opacity-70")} >
+                    <span className={cn("text-sm font-medium truncate", statusTextColor, event.status === 'completed' && "opacity-70", "whitespace-nowrap ml-1")}>
                       {statusText}
                     </span>
                   }
                 </div>
-              ) : ( // week view
+              ) : ( // Fallback
                 <>
                   <span className={cn("truncate text-sm", event.status === 'completed' && "opacity-70", titleTextColor)}>
                     {event.title}
@@ -371,6 +397,16 @@ const MonthView = ({ date, events, highlightedEventId, setHighlightedEventId, on
                     />
                 ))}
               </div>
+              {/* PT 완료된 이벤트 표시 */}
+              {(() => {
+                const completedPtCount = dayEvents.filter(event => event.type === 'PT' && event.status === 'completed').length;
+                return completedPtCount > 0 ? (
+                  <div className="flex flex-col items-center mt-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span> {/* 초록색 점 */}
+                    <span className="text-[9px] leading-none font-semibold mt-0.5">{completedPtCount}</span>
+                  </div>
+                ) : null;
+              })()}
             </div>
           );
         })}
@@ -396,13 +432,13 @@ interface TimeGridViewProps {
 
 const HOUR_SLOT_HEIGHT_PX = 96;
 const MIN_EVENT_HEIGHT_PX = 20; 
-const MIN_EVENT_HEIGHT_PX_DAY = 18;
+const MIN_EVENT_HEIGHT_PX_DAY = 36; // Increased to accommodate more text
 const EVENT_GAP_PX = 2;
 const EVENT_GAP_PX_X = 1; 
 const EVENT_WIDTH_PERCENTAGE = 85; // 너비 추가 조정
 const EVENT_LEFT_PERCENTAGE = 0;
-const MAX_EVENTS_PER_ROW_DAY = 4; // 한 줄에 표시될 최대 이벤트 수 (Day View 가로 칸 수)
-const DAY_VIEW_EVENT_WIDTH_PERCENTAGE = 25; // Day View에서 각 이벤트의 너비
+const MAX_EVENTS_PER_ROW_DAY = 2; // 한 줄에 표시될 최대 이벤트 수 (Day View 가로 칸 수)
+const DAY_VIEW_EVENT_WIDTH_PERCENTAGE = 49; // Day View에서 각 이벤트의 너비 (칸 너비와 동일하게 설정)
 const DAY_VIEW_EVENT_LEFT_MARGIN_PERCENTAGE = 1; // Day View 이벤트 왼쪽 마진
 const EVENT_WIDTH_PERCENTAGE_DAY = Math.floor((100 - (EVENT_LEFT_PERCENTAGE * 2) - (EVENT_GAP_PX_X * (MAX_EVENTS_PER_ROW_DAY -1 ))) / MAX_EVENTS_PER_ROW_DAY) ;
 
@@ -437,436 +473,248 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
     }
   }, [date, viewType]);
 
+  // This useEffect is for calculating dynamic hour slot heights, which might not be needed
+  // if day view events are absolutely positioned relative to the entire day column.
+  // For simplicity and to ensure events are rendered correctly in day view as single cards,
+  // we might rely on fixed HOUR_SLOT_HEIGHT_PX for visual hour lines
+  // and calculate event top/height based on the total day height.
   useEffect(() => {
     const newSlotHeights: Record<number, number> = {};
     hours.forEach(hour => {
-      let maxHourHeight = HOUR_SLOT_HEIGHT_PX;
-      days.forEach(day => {
-        const hourStart = setMinutes(setHours(startOfDay(day), hour), 0);
-        const hourEnd = setMinutes(setHours(startOfDay(day), hour + 1), 0);
-        const relevantEvents = events.filter(event => {
-          const eventStart = parseISO(event.start);
-          const eventEnd = parseISO(event.end);
-          return isSameDay(eventStart, day) && eventStart < hourEnd && eventEnd > hourStart;
-        });
-
-        if (relevantEvents.length > 0) {
-          let currentDayHourHeight = 0;
-          if (viewType === 'day') {
-            let accumulatedPixelWidth = EVENT_LEFT_PERCENTAGE;
-            let currentRowEventMaxHeight = 0; 
-            let currentRowTotalHeight = 0;    
-
-            relevantEvents.forEach((event, index) => {
-              const eventStartObj = parseISO(event.start);
-              const eventEndObj = parseISO(event.end);
-              let effectiveStart = eventStartObj < hourStart ? hourStart : eventStartObj;
-              let effectiveEnd = eventEndObj > hourEnd ? hourEnd : eventEndObj;
-              const durationMinutes = differenceInMinutes(effectiveEnd, effectiveStart);
-              let eventHeight = (durationMinutes / 60) * HOUR_SLOT_HEIGHT_PX;
-              eventHeight = Math.max(MIN_EVENT_HEIGHT_PX_DAY, eventHeight);
-              
-              currentRowEventMaxHeight = Math.max(currentRowEventMaxHeight, eventHeight);
-
-              const eventWidth = EVENT_WIDTH_PERCENTAGE_DAY;
-              if (index > 0 && (accumulatedPixelWidth + eventWidth + EVENT_GAP_PX_X) > (100 - EVENT_LEFT_PERCENTAGE)) { 
-                currentRowTotalHeight += currentRowEventMaxHeight + EVENT_GAP_PX; 
-                accumulatedPixelWidth = EVENT_LEFT_PERCENTAGE; 
-                currentRowEventMaxHeight = eventHeight; 
-              }
-              accumulatedPixelWidth += eventWidth + EVENT_GAP_PX_X;
-            });
-            currentDayHourHeight = currentRowTotalHeight + currentRowEventMaxHeight + EVENT_GAP_PX; 
-            maxHourHeight = Math.max(maxHourHeight, currentDayHourHeight);
-
-          } else { // week view
-            relevantEvents.forEach(event => {
-              const eventStartObj = parseISO(event.start);
-              const eventEndObj = parseISO(event.end);
-              let start = eventStartObj < hourStart ? hourStart : eventStartObj;
-              let end = eventEndObj > hourEnd ? hourEnd : eventEndObj;
-              const durationMinutes = differenceInMinutes(end, start);
-              let eventHeight = (durationMinutes / 60) * HOUR_SLOT_HEIGHT_PX; 
-              eventHeight = Math.max(MIN_EVENT_HEIGHT_PX, eventHeight);
-              currentDayHourHeight += eventHeight + EVENT_GAP_PX;
-            });
-            maxHourHeight = Math.max(maxHourHeight, currentDayHourHeight > 0 ? currentDayHourHeight - EVENT_GAP_PX : 0);
-          }
-        }
-      });
-      newSlotHeights[hour] = Math.max(HOUR_SLOT_HEIGHT_PX, maxHourHeight);
+      newSlotHeights[hour] = HOUR_SLOT_HEIGHT_PX; // Keep fixed for now
     });
     setHourSlotHeights(newSlotHeights);
-  }, [events, days, viewType, hours]);
+  }, []);
 
 
-  const renderEventsForHour = (day: Date, hour: number, slotHeight: number) => {
-    const startOfCurrentDay = startOfDay(day);
-    const hourStart = setMinutes(setHours(startOfCurrentDay, hour), 0);
-    const hourEnd = setMinutes(setHours(startOfCurrentDay, hour + 1), 0);
+  const processedEvents = useMemo(() => {
+    if (viewType !== 'day') return []; // Only calculate for day view
 
-    const relevantEventsForSlot = events.filter(event => {
-      const eventStart = parseISO(event.start);
-      const eventEnd = parseISO(event.end);
-      return isSameDay(eventStart, day) && eventStart < hourEnd && eventEnd > hourStart;
-    });
-
-    const sortedEvents = relevantEventsForSlot.sort((a, b) => {
+    const dayEvents = events.filter(event => isSameDay(parseISO(event.start), date));
+    
+    // Sort events by start time, then by duration (longer events first for better layout)
+    const sortedEvents = dayEvents.sort((a, b) => {
       const startA = parseISO(a.start).getTime();
       const startB = parseISO(b.start).getTime();
-      if (startA !== startB) {
-        return startA - startB;
-      }
+      if (startA !== startB) return startA - startB;
       return differenceInMinutes(parseISO(b.end), parseISO(b.start)) - differenceInMinutes(parseISO(a.end), parseISO(a.start));
     });
-    
-    const eventsToDisplay = sortedEvents;
-    const eventLayouts: { [key: string]: CalendarEvent['layout'] } = {};
 
-    if (eventsToDisplay.length > 0) {
-      if (viewType === 'day') {
-        // Day view: 이벤트들을 4개의 가로 칸에 배치하는 로직
-        const columnAssignments: { [eventId: string]: number } = {};
-        const occupiedColumns: boolean[][] = Array(60).fill(null).map(() => Array(MAX_EVENTS_PER_ROW_DAY).fill(false)); // 1분 단위로 각 칸의 점유 상태 기록
+    const layoutEvents: CalendarEvent[] = [];
+    // Store end times for each column to check for overlaps
+    const columnEndTimes: number[] = Array(MAX_EVENTS_PER_ROW_DAY).fill(0);
 
-        eventsToDisplay.forEach((event) => {
-          const eventStartObj = parseISO(event.start);
-          const eventEndObj = parseISO(event.end);
-          
-          const startMinuteInHour = Math.max(0, differenceInMinutes(eventStartObj, hourStart));
-          const endMinuteInHour = Math.min(60, differenceInMinutes(eventEndObj, hourStart));
+    sortedEvents.forEach(event => {
+      const eventStart = parseISO(event.start);
+      const eventEnd = parseISO(event.end);
+      const startMinutes = getHours(eventStart) * 60 + getMinutes(eventStart);
+      const endMinutes = getHours(eventEnd) * 60 + getMinutes(eventEnd);
+      const durationMinutes = Math.max(15, differenceInMinutes(eventEnd, eventStart)); // Min duration 15 mins
 
-          let assignedColumn = -1;
-          const preferredColumn = (event.layout as { columnIndex?: number })?.columnIndex;
+      let targetColumn = -1;
 
-          // 1. 드롭된 이벤트의 경우 (preferredColumn이 존재): 해당 칸에 강제 할당 (겹침 허용)
-          if (preferredColumn !== undefined && preferredColumn >= 0 && preferredColumn < MAX_EVENTS_PER_ROW_DAY) {
-            assignedColumn = preferredColumn;
-          } else {
-            // 2. 일반적인 이벤트 배치 또는 preferredColumn이 없는 경우: 가장 왼쪽의 빈 칸부터 할당
-            for (let col = 0; col < MAX_EVENTS_PER_ROW_DAY; col++) {
-              let isColumnAvailable = true;
-              for (let m = startMinuteInHour; m < endMinuteInHour; m++) {
-                if (occupiedColumns[m]?.[col]) {
-                  isColumnAvailable = false;
-                  break;
+      // Check if event already has a columnIndex from a previous drop
+      if (typeof event.layout?.columnIndex === 'number') {
+        targetColumn = event.layout.columnIndex;
+      } else {
+        // Original logic to find the first available column
+        for (let i = 0; i < MAX_EVENTS_PER_ROW_DAY; i++) {
+          if (startMinutes >= columnEndTimes[i]) {
+            targetColumn = i;
+            break;
+          }
+        }
+
+        // Fallback if no column is free
+        if (targetColumn === -1) {
+            let minEndTime = Infinity;
+            for (let i = 0; i < MAX_EVENTS_PER_ROW_DAY; i++) {
+                if (columnEndTimes[i] < minEndTime) {
+                    minEndTime = columnEndTimes[i];
+                    targetColumn = i;
                 }
-              }
-              if (isColumnAvailable) {
-                assignedColumn = col;
-                break;
-              }
             }
-            // 3. 모든 칸이 이미 차있는 경우: 가장 왼쪽 칸(0)에 겹쳐서 할당 (또는 마지막 칸)
-            if (assignedColumn === -1) {
-              assignedColumn = 0; // 또는 MAX_EVENTS_PER_ROW_DAY - 1
-            }
-          }
-
-          columnAssignments[event.id] = assignedColumn;
-          // 점유 상태 업데이트: assignedColumn이 유효한 경우에만 점유 처리
-          if (assignedColumn >= 0 && assignedColumn < MAX_EVENTS_PER_ROW_DAY) {
-            for (let m = startMinuteInHour; m < endMinuteInHour; m++) {
-              if (!occupiedColumns[m]) {
-                occupiedColumns[m] = Array(MAX_EVENTS_PER_ROW_DAY).fill(false);
-              }
-              occupiedColumns[m][assignedColumn] = true;
-            }
-          }
-        });
-
-        eventsToDisplay.forEach((event) => {
-          const eventStartObj = parseISO(event.start);
-          const eventEndObj = parseISO(event.end);
-          let effectiveStart = eventStartObj < hourStart ? hourStart : eventStartObj;
-          let effectiveEnd = eventEndObj > hourEnd ? hourEnd : eventEndObj;
-
-          const top = (differenceInMinutes(effectiveStart, hourStart) / 60) * slotHeight;
-          const height = Math.max(MIN_EVENT_HEIGHT_PX_DAY, (differenceInMinutes(effectiveEnd, effectiveStart) / 60) * slotHeight - EVENT_GAP_PX);
-          
-          const eventColumnIndex = columnAssignments[event.id] !== undefined ? columnAssignments[event.id] : 0;
-          
-          const currentEventWidth = DAY_VIEW_EVENT_WIDTH_PERCENTAGE; // 명확하게 DAY_VIEW_EVENT_WIDTH_PERCENTAGE 사용
-          const left = DAY_VIEW_EVENT_LEFT_MARGIN_PERCENTAGE + (eventColumnIndex * (currentEventWidth + EVENT_GAP_PX_X));
-          const zIndex = 10 + eventColumnIndex;
-
-          eventLayouts[event.id] = {
-            top,
-            height,
-            left,
-            width: currentEventWidth, // EventItem에 전달될 너비
-            zIndex,
-          };
-        });
-
-      } else { // week view
-        // Week view: 기존 로직 유지
-        eventsToDisplay.forEach((event, index) => {
-            const eventStartObj = parseISO(event.start);
-            const eventEndObj = parseISO(event.end);
-
-            let effectiveStart = eventStartObj < hourStart ? hourStart : eventStartObj;
-            let effectiveEnd = eventEndObj > hourEnd ? hourEnd : eventEndObj;
-            
-            const topOffsetWithinHour = (differenceInMinutes(effectiveStart, hourStart) / 60) * slotHeight;
-            let heightInPx = (differenceInMinutes(effectiveEnd, effectiveStart) / 60) * slotHeight;
-            heightInPx = Math.max(MIN_EVENT_HEIGHT_PX, heightInPx - EVENT_GAP_PX);
-            
-            eventLayouts[event.id] = {
-                top: topOffsetWithinHour,
-                height: heightInPx,
-                left: EVENT_LEFT_PERCENTAGE,
-                width: EVENT_WIDTH_PERCENTAGE,
-                zIndex: 10 + index,
-            };
-        });
+            if (targetColumn === -1) targetColumn = 0;
+        }
       }
-    }
+      
+      // Ensure targetColumn is within bounds
+      targetColumn = Math.min(targetColumn, MAX_EVENTS_PER_ROW_DAY - 1);
+      targetColumn = Math.max(targetColumn, 0);
 
-    const renderedEventItems = eventsToDisplay.map(event => {
-      const finalLayout = eventLayouts[event.id];
-      if (!finalLayout) return null;
+      const top = (startMinutes / (24 * 60)) * (24 * HOUR_SLOT_HEIGHT_PX);
+      const height = (durationMinutes / (24 * 60)) * (24 * HOUR_SLOT_HEIGHT_PX);
+      
+      const eventWidth = EVENT_WIDTH_PERCENTAGE_DAY;
+      const eventLeft = EVENT_LEFT_PERCENTAGE + targetColumn * (eventWidth + EVENT_GAP_PX_X);
 
-      return (
-        <EventItem
-          key={event.id}
-          event={{ ...event, layout: finalLayout }}
-          viewType={viewType}
-          highlightedEventId={highlightedEventId}
-          setHighlightedEventId={setHighlightedEventId}
-          onStartPt={onStartPt}
-          onEditPt={onEditPt}
-          onEditAppointment={onEditAppointment}
-          onToggleNoShow={onToggleNoShow}
-          onDeletePt={onDeletePt}
-        />
-      );
-    }).filter(Boolean);
 
-    return renderedEventItems;
-  };
+      layoutEvents.push({
+        ...event,
+        layout: {
+          top: top,
+          height: Math.max(height, MIN_EVENT_HEIGHT_PX_DAY), // Ensure minimum height
+          left: eventLeft,
+          width: eventWidth,
+          zIndex: 10 + targetColumn, // Higher zIndex for events in later columns if they overlap
+          columnIndex: targetColumn,
+        },
+      });
+      // Update the end time for this column
+      columnEndTimes[targetColumn] = endMinutes;
+    });
+
+    return layoutEvents;
+  }, [events, date, viewType]);
+
 
   return (
-    <div className="flex border-t">
-      <div className="w-12 text-center text-xs font-medium text-muted-foreground sticky left-0 bg-background z-30 shrink-0">
-        {viewType === 'week' && (
-          <div className="h-[60px] border-b border-r invisible"></div>
-        )}
-        {hours.map(hour => (
-          <div 
-            key={`time-label-${hour}`} 
-            className="border-b border-r flex items-center justify-center"
-            style={{ height: `${hourSlotHeights[hour] || HOUR_SLOT_HEIGHT_PX}px` }}
-          >
-            {format(setMinutes(setHours(new Date(), hour), 0), 'HH:mm')}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex-grow overflow-x-auto">
-        <div className={`grid ${viewType === 'week' ? 'grid-cols-7' : 'grid-cols-1'} min-w-full`}>
+    <div className="flex flex-col h-full">
+      {/* Header for week view */}
+      {viewType === 'week' && (
+        <div className="grid grid-cols-[minmax(3rem,auto)_repeat(7,1fr)] items-center border-b sticky top-0 bg-background z-30"> {/* Adjusted grid-cols for week header */}
+          <div className="w-12 text-center text-xs text-muted-foreground py-2 border-r">시간</div> {/* Fixed width for time header cell */}
           {days.map(day => (
-            <div key={day.toISOString()} className="border-l relative min-w-[120px] box-border day-column-container"> {/* Added day-column-container for drop calculation */}
-              {viewType === 'week' && (
-                <div className="text-center text-sm font-medium py-1 border-b sticky top-0 bg-background z-20 h-[60px] flex flex-col justify-center">
-                  <div>{format(day, 'd', { locale: ko })}</div>
-                  <div>{format(day, 'eee', { locale: ko })}</div>
-                </div>
-              )}
-              <div className="relative h-full"> {/* Ensure this container takes full height for absolute positioning of events */}
-                {/* Render hour slots for visual lines and drop zones */}
-                {hours.map(hour => (
-                  <div
-                    key={`slot-${day.toISOString()}-${hour}`}
-                    data-slot-key={`${day.toISOString()}-${hour}`}
-                    data-hour={hour}
-                    className={cn(
-                      "relative border-b",
-                      hour === hours.length - 1 && "border-b-0",
-                      "day-view-hour-slot flex" // flex로 변경하여 가로 정렬
-                    )}
-                    style={{ height: `${hourSlotHeights[hour] || HOUR_SLOT_HEIGHT_PX}px` }}
-                  >
-                    {/* 가로 4칸으로 나누기 (day view에만 적용) */}
-                    {viewType === 'day' ? (
-                      Array.from({ length: 4 }).map((_, colIndex) => (
-                        <div
-                          key={`day-col-${hour}-${colIndex}`}
-                          className={cn(
-                            "flex-1 flex flex-col", // 각 칸이 세로로 10분 슬롯을 가짐
-                            colIndex < 3 && "border-r border-gray-300 dark:border-gray-600" // 마지막 칸 제외하고 오른쪽에 구분선
-                          )}
-                        >
-                          {/* 각 칸 내부에 10분 단위 슬롯 렌더링 */}
-                          {Array.from({ length: 6 }).map((_, minuteIndex) => {
-                            const minute = minuteIndex * 10;
-                            return (
-                              <div
-                                key={`minute-slot-${day.toISOString()}-${hour}-${colIndex}-${minute}`}
-                                data-minute={minute}
-                                data-col={colIndex}
-                                className={cn(
-                                  "flex-1 border-b border-dashed border-gray-200 dark:border-gray-700 last:border-b-0",
-                                  draggedOverInfo &&
-                                  isSameDay(draggedOverInfo.day, day) &&
-                                  draggedOverInfo.hour === hour &&
-                                  draggedOverInfo.minute === minute &&
-                                  draggedOverInfo.columnIndex === colIndex && // columnIndex 일치 확인
-                                  "bg-green-100 dark:bg-green-700 opacity-75"
-                                )}
-                                style={{ minHeight: `${(hourSlotHeights[hour] || HOUR_SLOT_HEIGHT_PX) / 6}px` }}
-                                onDragOver={(e) => {
-                                  e.preventDefault();
-                                  setDraggedOverInfo({ day, hour, minute: minute, columnIndex: colIndex });
-                                  e.dataTransfer.dropEffect = "move";
-                                }}
-                                onDrop={(e) => {
-                                  e.preventDefault();
-                                  setDraggedOverInfo(null);
-                                  const eventDataString = e.dataTransfer.getData("application/json");
-                                  if (!eventDataString) return;
-                                  try {
-                                    const eventData = JSON.parse(eventDataString);
-                                    const eventId = eventData.id;
-                                    const durationMinutes = eventData.durationMinutes;
-                                    if (typeof eventId !== 'string' || typeof durationMinutes !== 'number') return;
-                                    
-                                    // colIndex는 이벤트의 시각적 배치에 사용하고,
-                                    // onEventDrop에는 시간 정보만 전달 (또는 필요시 onEventDrop 시그니처 변경)
-                                    let newStart = setMinutes(setHours(startOfDay(day), hour), minute);
-                                    let newEnd = addMinutes(newStart, durationMinutes);
-                                    const endOfDropDay = endOfDay(day);
-                                    if (newEnd > endOfDropDay) {
-                                        newEnd = endOfDropDay;
-                                        if (newStart >= newEnd) {
-                                           newStart = subMinutes(newEnd, Math.max(10, durationMinutes));
-                                           if (newStart < startOfDay(day)) newStart = startOfDay(day);
-                                        }
-                                    }
-                                    // onEventDrop에 columnIndex 전달
-                                    onEventDrop(eventId, newStart, newEnd, colIndex);
-                                  } catch (error) { console.error("Drop error:", error); }
-                                }}
-                                onDragLeave={() => setDraggedOverInfo(null) }
-                              />
-                            );
-                          })}
-                        </div>
-                      ))
-                    ) : (
-                      // Week view: 기존 10분 단위 슬롯 렌더링 (가로 구분 없음)
-                      // Week view에서는 columnIndex가 없으므로 draggedOverInfo 설정 시 주의
-                      Array.from({ length: 6 }).map((_, minuteIndex) => {
-                        const minute = minuteIndex * 10;
-                        return (
-                          <div
-                            key={`minute-slot-week-${day.toISOString()}-${hour}-${minute}`}
-                            data-minute={minute}
-                            className={cn(
-                              "flex-1 border-b border-dashed border-gray-200 dark:border-gray-700 last:border-b-0",
-                              draggedOverInfo &&
-                              isSameDay(draggedOverInfo.day, day) &&
-                              draggedOverInfo.hour === hour &&
-                              draggedOverInfo.minute === minute &&
-                              draggedOverInfo.columnIndex === undefined && // week view에서는 columnIndex가 없음
-                              "bg-green-100 dark:bg-green-700 opacity-75"
-                            )}
-                            style={{ minHeight: `${(hourSlotHeights[hour] || HOUR_SLOT_HEIGHT_PX) / 6}px` }}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              setDraggedOverInfo({ day, hour, minute: minute }); // columnIndex 없이 설정
-                              e.dataTransfer.dropEffect = "move";
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              setDraggedOverInfo(null);
-                              const eventDataString = e.dataTransfer.getData("application/json");
-                              if (!eventDataString) return;
-                              try {
-                                const eventData = JSON.parse(eventDataString);
-                                const eventId = eventData.id;
-                                const durationMinutes = eventData.durationMinutes;
-                                if (typeof eventId !== 'string' || typeof durationMinutes !== 'number') return;
-                                let newStart = setMinutes(setHours(startOfDay(day), hour), minute);
-                                let newEnd = addMinutes(newStart, durationMinutes);
-                                const endOfDropDay = endOfDay(day);
-                                if (newEnd > endOfDropDay) {
-                                    newEnd = endOfDropDay;
-                                    if (newStart >= newEnd) {
-                                       newStart = subMinutes(newEnd, Math.max(10, durationMinutes));
-                                       if (newStart < startOfDay(day)) newStart = startOfDay(day);
-                                    }
-                                }
-                                onEventDrop(eventId, newStart, newEnd); // Week view에서는 columnIndex 불필요
-                              } catch (error) { console.error("Drop error:", error); }
-                            }}
-                            onDragLeave={() => setDraggedOverInfo(null)}
-                          />
-                        );
-                      })
-                    )}
-                  </div>
-                ))}
-                {/* Render all events for the current day directly into the day column */}
-                {events
-                  .filter(event => isSameDay(parseISO(event.start), day))
-                  .map(event => {
-                    const eventStart = parseISO(event.start);
-                    const eventEnd = parseISO(event.end);
-                    
-                    const startMinutesInDay = getHours(eventStart) * 60 + getMinutes(eventStart);
-                    
-                    // Calculate top position based on dynamic slot heights up to the event's start hour
-                    let topOffsetPx = 0;
-                    for(let h=0; h < getHours(eventStart); h++) {
-                        topOffsetPx += (hourSlotHeights[h] || HOUR_SLOT_HEIGHT_PX);
-                    }
-                    // Add offset for minutes within the start hour
-                    topOffsetPx += (getMinutes(eventStart) / 60) * (hourSlotHeights[getHours(eventStart)] || HOUR_SLOT_HEIGHT_PX);
-
-                    const duration = differenceInMinutes(eventEnd, eventStart);
-                    let eventHeightPx = 0;
-                    let currentHour = getHours(eventStart);
-                    let minutesProcessed = 0;
-
-                    while(minutesProcessed < duration && currentHour < 24) {
-                        const minutesInCurrentHourSlot = Math.min(60 - (currentHour === getHours(eventStart) ? getMinutes(eventStart) : 0), duration - minutesProcessed);
-                        eventHeightPx += (minutesInCurrentHourSlot / 60) * (hourSlotHeights[currentHour] || HOUR_SLOT_HEIGHT_PX);
-                        minutesProcessed += minutesInCurrentHourSlot;
-                        currentHour++;
-                    }
-                     eventHeightPx = Math.max(viewType === 'day' ? MIN_EVENT_HEIGHT_PX_DAY : MIN_EVENT_HEIGHT_PX, eventHeightPx);
-
-
-                    return (
-                      <EventItem
-                        key={event.id}
-                        event={{
-                          ...event,
-                          layout: {
-                            top: topOffsetPx,
-                            height: eventHeightPx,
-                            left: EVENT_LEFT_PERCENTAGE,
-                            width: EVENT_WIDTH_PERCENTAGE,
-                            zIndex: 10,
-                          },
-                        }}
-                        viewType={viewType}
-                        highlightedEventId={highlightedEventId}
-                        setHighlightedEventId={setHighlightedEventId}
-                        onStartPt={onStartPt}
-                        onEditPt={onEditPt}
-                        onEditAppointment={onEditAppointment}
-                        onToggleNoShow={onToggleNoShow}
-                        onDeletePt={onDeletePt}
-                        // onEventDrop is handled by the parent slot
-                      />
-                    );
-                  })}
+            <div key={day.toString()} className="text-center text-xs py-2 border-r last:border-r-0">
+              <div>{format(day, 'EEE', { locale: ko })}</div>
+              <div className={cn("text-lg font-medium", isSameDay(day, new Date()) && "text-primary")}>
+                {format(day, 'd')}
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      <div className={cn("flex-grow overflow-y-auto", viewType === 'week' ? "grid grid-cols-[minmax(3rem,auto)_repeat(7,1fr)]" : "flex")}> {/* Adjusted grid-cols for week main content, flex for day view */}
+        {/* Time column */}
+        <div className={cn("w-12 shrink-0 border-r", "relative")}> {/* Consistent width and shrink-0 */}
+          {hours.map(hour => (
+            <div
+              key={`time-${hour}`}
+              className="h-24 text-center text-xs text-muted-foreground pt-1 border-b" // Removed relative from here, parent is relative
+              style={{ height: `${hourSlotHeights[hour] || HOUR_SLOT_HEIGHT_PX}px` }}
+            >
+              {hour === 0 ? '' : `${hour.toString().padStart(2, '0')}:00`}
+            </div>
+          ))}
+        </div>
+
+        {/* Day columns container */}
+        {/* For day view, days.map will iterate once. For week view, 7 times. */}
+        {days.map((dayItem, dayIndex) => (
+          <div
+            key={dayItem.toString()}
+            className={cn(
+              "relative", // Each day column is relative for its events
+              viewType === 'week' && "border-r last:border-r-0", // Borders for week view
+              viewType === 'day' && "flex-1 w-full" // Day view's single column takes remaining space
+            )}
+            onDragOver={(e) => {
+              e.preventDefault();
+              const rect = e.currentTarget.getBoundingClientRect();
+              const y = e.clientY - rect.top;
+              const currentHour = Math.floor(y / (hourSlotHeights[0] || HOUR_SLOT_HEIGHT_PX)); // Assuming all slots have same height for simplicity
+              const minuteFraction = (y % (hourSlotHeights[0] || HOUR_SLOT_HEIGHT_PX)) / (hourSlotHeights[0] || HOUR_SLOT_HEIGHT_PX);
+              const currentMinute = Math.floor(minuteFraction * 6) * 10; // Snap to 10-minute intervals
+
+              let currentColumnIndex;
+              if (viewType === 'day') {
+                const x = e.clientX - rect.left;
+                const columnWidth = rect.width / MAX_EVENTS_PER_ROW_DAY;
+                currentColumnIndex = Math.min(MAX_EVENTS_PER_ROW_DAY - 1, Math.floor(x / columnWidth));
+              }
+              setDraggedOverInfo({ day: dayItem, hour: currentHour, minute: currentMinute, columnIndex: currentColumnIndex });
+            }}
+            onDragLeave={() => setDraggedOverInfo(null)}
+            onDrop={(e) => {
+              e.preventDefault();
+              const eventDataString = e.dataTransfer.getData("application/json");
+              if (!eventDataString || !draggedOverInfo) return;
+
+              const eventData = JSON.parse(eventDataString);
+              const { id: eventId, durationMinutes } = eventData;
+              
+              let newStart = setMinutes(setHours(startOfDay(draggedOverInfo.day), draggedOverInfo.hour), draggedOverInfo.minute);
+              newStart = newStart < startOfDay(draggedOverInfo.day) ? startOfDay(draggedOverInfo.day) : newStart;
+              
+              let newEnd = addMinutes(newStart, durationMinutes);
+              if (newEnd > endOfDay(draggedOverInfo.day)) {
+                newEnd = endOfDay(draggedOverInfo.day);
+                newStart = subMinutes(newEnd, durationMinutes);
+                newStart = newStart < startOfDay(draggedOverInfo.day) ? startOfDay(draggedOverInfo.day) : newStart;
+              }
+              
+              onEventDrop(eventId, newStart, newEnd, draggedOverInfo.columnIndex);
+              setDraggedOverInfo(null);
+            }}
+          >
+            {/* Hour lines for each day column (visual only for day view, week view has events here) */}
+            {/* For day view, events are rendered above, absolutely. For week view, events are per hour slot. */}
+            {hours.map(hour => (
+              <div
+                key={`${dayItem.toString()}-hour-${hour}`}
+                className={cn("border-b", viewType === 'day' && "pointer-events-none")} // pointer-events-none for day view hour lines
+                style={{ height: `${hourSlotHeights[hour] || HOUR_SLOT_HEIGHT_PX}px` }}
+              >
+                {/* Highlight for drag over */}
+                {draggedOverInfo && isSameDay(draggedOverInfo.day, dayItem) && draggedOverInfo.hour === hour && (
+                  <div
+                    className="absolute bg-blue-100 opacity-50 pointer-events-none flex items-center justify-center text-xs text-blue-800" // Added flex centering and text style
+                    style={{
+                      top: `${draggedOverInfo.hour * (hourSlotHeights[draggedOverInfo.hour] || HOUR_SLOT_HEIGHT_PX) + (draggedOverInfo.minute / 60) * (hourSlotHeights[draggedOverInfo.hour] || HOUR_SLOT_HEIGHT_PX)}px`,
+                      height: `${MIN_EVENT_HEIGHT_PX_DAY}px`,
+                      left: viewType === 'day' && draggedOverInfo.columnIndex !== undefined ? `${draggedOverInfo.columnIndex * (100 / MAX_EVENTS_PER_ROW_DAY)}%` : '0%',
+                      width: viewType === 'day' && draggedOverInfo.columnIndex !== undefined ? `${100 / MAX_EVENTS_PER_ROW_DAY}%` : '100%',
+                      zIndex: 5,
+                    }}
+                  >
+                    {format(setMinutes(setHours(new Date(), draggedOverInfo.hour), draggedOverInfo.minute), 'HH:mm')}
+                  </div>
+                )}
+                {/* Render events for this hour slot in WEEK VIEW ONLY */}
+                {viewType === 'week' && (
+                  <div className="p-1 space-y-0.5 overflow-y-auto h-full">
+                    {events
+                      .filter(event => {
+                        const eventStart = parseISO(event.start);
+                        return isSameDay(eventStart, dayItem) && getHours(eventStart) === hour;
+                      })
+                      .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())
+                      .map(event => (
+                        <EventItem
+                          key={event.id}
+                          event={event}
+                          viewType="week-list"
+                          highlightedEventId={highlightedEventId}
+                          setHighlightedEventId={setHighlightedEventId}
+                          onStartPt={onStartPt}
+                          onEditPt={onEditPt}
+                          onEditAppointment={onEditAppointment}
+                          onToggleNoShow={onToggleNoShow}
+                          onDeletePt={onDeletePt}
+                        />
+                      ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            {/* Render Day View events here, absolutely positioned relative to this dayItem column */}
+            {viewType === 'day' && dayIndex === 0 && processedEvents.map(event => (
+              <EventItem
+                key={event.id}
+                event={event}
+                viewType="day"
+                highlightedEventId={highlightedEventId}
+                setHighlightedEventId={setHighlightedEventId}
+                onStartPt={onStartPt}
+                onEditPt={onEditPt}
+                onEditAppointment={onEditAppointment}
+                onToggleNoShow={onToggleNoShow}
+                onDeletePt={onDeletePt}
+              />
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -913,8 +761,7 @@ export function ScheduleCalendar(props: ScheduleCalendarProps): JSX.Element {
         .update({
           start_time: newStart.toISOString(), // Use 'start_time'
           end_time: newEnd.toISOString(),   // Use 'end_time'
-          // type, member_id, notes etc. remain unchanged on drag-drop
-          // If you need to store columnIndex in the DB, add it here.
+          calendar_column_index: columnIndex, // 컬럼 이름 수정
         })
         .eq('id', eventId); // eventId is pt_sessions.id
 
@@ -922,10 +769,10 @@ export function ScheduleCalendar(props: ScheduleCalendarProps): JSX.Element {
         throw error;
       }
       toast({ title: "성공", description: "일정이 성공적으로 업데이트되었습니다." });
-      // It might be redundant to call props.onEventDrop again here if the parent handles UI updates based on the first call.
-      // However, if the parent relies on this for post-DB update confirmation, it can remain.
-      // Consider if columnIndex is needed in this second call as well.
-      props.onEventDrop(eventId, newStart, newEnd, columnIndex);
+      // 두 번째 props.onEventDrop 호출을 제거하여 중복 상태 업데이트 및 잠재적 문제를 방지합니다.
+      // 부모 컴포넌트는 첫 번째 props.onEventDrop 호출을 통해 상태를 업데이트하고,
+      // 그 후 DB 업데이트를 진행하거나, UI를 낙관적으로 업데이트 후 DB 결과에 따라 처리해야 합니다.
+      // props.onEventDrop(eventId, newStart, newEnd, columnIndex); // 이 줄을 제거 또는 주석 처리
 
     } catch (error: any) {
       console.error("Error updating event time in DB:", error);
@@ -992,5 +839,3 @@ export function ScheduleCalendar(props: ScheduleCalendarProps): JSX.Element {
     </div>
   );
 }
-
-

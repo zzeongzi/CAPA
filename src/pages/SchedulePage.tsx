@@ -15,9 +15,11 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useMembers } from '@/hooks/use-members';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { format, startOfWeek, endOfWeek, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, isSameDay, isSameMonth, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, isSameDay, isSameMonth, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Database } from '@/integrations/supabase/types'; // Import Database type
+import { Database } from '@/integrations/supabase/types';
+import { DayPicker, type DayContentProps } from 'react-day-picker'; // DayContentProps type으로 import
+import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +30,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+// DayEventInfo 타입을 typeCounts만 가지도록 수정
+interface DayEventInfo {
+  typeCounts: Record<string, number>;
+  completedPtCount: number; // PT 완료된 이벤트 개수 추가
+}
 
 const SchedulePage = () => {
   const location = useLocation();
@@ -51,6 +59,66 @@ const SchedulePage = () => {
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null); // 강조할 이벤트 ID 상태 추가
   const calendarContainerRef = useRef<HTMLDivElement>(null); // 캘린더 컨테이너 ref 추가
 
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, DayEventInfo>();
+    events.forEach(event => {
+      if (!event.start) return;
+      try {
+        const eventDate = parseISO(event.start);
+        const eventDateStr = format(eventDate, 'yyyy-MM-dd');
+        let dayInfo = map.get(eventDateStr);
+        if (!dayInfo) {
+          dayInfo = { typeCounts: {}, completedPtCount: 0 }; // completedPtCount 초기화
+        }
+        if (event.type) {
+          dayInfo.typeCounts[event.type] = (dayInfo.typeCounts[event.type] || 0) + 1;
+        }
+        if (event.type === 'PT' && event.status === 'completed') {
+          dayInfo.completedPtCount = (dayInfo.completedPtCount || 0) + 1;
+        }
+        map.set(eventDateStr, dayInfo);
+      } catch (e) {
+        console.error("Invalid date format for event start:", event.start, e);
+      }
+    });
+    return map;
+  }, [events]);
+
+  const CustomDayContent = (props: DayContentProps): React.ReactElement => {
+    const dateStr = format(props.date, 'yyyy-MM-dd');
+    const dayEventInfo = eventsByDate.get(dateStr);
+    const typeColorMap: Record<string, string> = {
+      'PT': 'bg-blue-600',
+      '상담': 'bg-yellow-500',
+      '측정': 'bg-orange-500',
+    };
+    return (
+      <div className="flex flex-col items-center justify-start w-full h-full pt-1 pb-1">
+        <span className={cn(
+          "text-sm text-center w-7 h-7 flex items-center justify-center", // 기본 스타일
+          props.activeModifiers.selected && "text-primary-foreground", // 선택된 날짜는 글자색만 (배경과 라운딩은 day_selected에서)
+          props.activeModifiers.today && !props.activeModifiers.selected && "text-blue-700 font-bold" // 오늘 날짜(선택 안됨)는 글자색과 굵기만 (배경과 라운딩은 day_today에서)
+        )}>
+          {format(props.date, 'd')}
+        </span>
+        <div className="mt-1 flex flex-row items-start justify-center space-x-1 min-h-[26px] w-full flex-wrap"> {/* 가로 정렬, 줄바꿈 허용 */}
+          {dayEventInfo && Object.entries(dayEventInfo.typeCounts).map(([type, count]) => (
+            <div key={type} className="flex flex-col items-center"> {/* 각 타입별로 세로 정렬 */}
+              <span className={cn("h-1.5 w-1.5 rounded-full", typeColorMap[type] || 'bg-gray-400')}></span>
+              <span className="text-[9px] leading-none font-semibold mt-0.5">{count}</span>
+            </div>
+          ))}
+          {/* PT 완료된 이벤트 표시 */}
+          {dayEventInfo && dayEventInfo.completedPtCount > 0 && (
+            <div className="flex flex-col items-center">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span> {/* 초록색 점 */}
+              <span className="text-[9px] leading-none font-semibold mt-0.5">{dayEventInfo.completedPtCount}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const handleNewAppointment = () => {
     setIsNewAppointmentModalOpen(true);
@@ -86,66 +154,75 @@ const SchedulePage = () => {
      }
    }, [currentDate, currentView]);
 
-    const fetchEvents = useCallback(async () => {
-      if (!user || membersLoading) return;
-      setIsLoading(true);
-      try {
-        const viewStart = currentView === 'month' ? startOfMonth(currentDate) : startOfWeek(currentDate, { locale: ko });
-        const viewEnd = currentView === 'month' ? endOfMonth(currentDate) : endOfWeek(currentDate, { locale: ko });
+  // Define colors and darkenColor function outside fetchEvents for broader access
+  const defaultColor = "#1d4ed8ff"; // blue-700
+  const completedColor = "#6b7280ff"; // gray-500
+  const cancelledColor = "#ef4444ff"; // red-500
+  const consultationColor = "#facc15ff"; // yellow-400
+  const measurementColor = "#f97316ff"; // orange-500
+  const overlapColor = "#ec4899ff"; // pink-500
+
+  const darkenColor = (hexColor: string | null | undefined): string => {
+    if (!hexColor || !hexColor.startsWith('#') || hexColor.length < 7) return hexColor || defaultColor;
+    try {
+      let r = parseInt(hexColor.substring(1, 3), 16);
+      let g = parseInt(hexColor.substring(3, 5), 16);
+      let b = parseInt(hexColor.substring(5, 7), 16);
+      let a = hexColor.length === 9 ? hexColor.substring(7, 9) : 'ff';
+
+      r = Math.max(0, r - 20);
+      g = Math.max(0, g - 20);
+      b = Math.max(0, b - 20);
+
+      return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}${a}`;
+    } catch (e) {
+      console.error("Error darkening color:", e);
+      return hexColor;
+    }
+  };
+
+  const fetchEvents = useCallback(async () => {
+    if (!user || membersLoading) return;
+    setIsLoading(true);
+    try {
+      const viewStart = currentView === 'month' ? startOfMonth(currentDate) : startOfWeek(currentDate, { locale: ko });
+      const viewEnd = currentView === 'month' ? endOfMonth(currentDate) : endOfWeek(currentDate, { locale: ko });
 
 
-        const { data: sessionsData, error: sessionsError } = await supabase
-          .from('pt_sessions')
-          .select('id, member_id, trainer_id, start_time, end_time, status, notes, type, background_color, workout_session_id, calendar_column_index') // calendar_column_index 추가
-          .eq('trainer_id', user.id)
-          .gte('start_time', viewStart.toISOString())
-          .lte('end_time', viewEnd.toISOString())
-          .order('start_time');
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from('pt_sessions')
+        .select('id, member_id, trainer_id, start_time, end_time, status, notes, type, background_color, workout_session_id, calendar_column_index') // calendar_column_index 추가
+        .eq('trainer_id', user.id)
+        .gte('start_time', viewStart.toISOString())
+        .lte('end_time', viewEnd.toISOString())
+        .order('start_time');
 
-        if (sessionsError) throw sessionsError;
+      if (sessionsError) throw sessionsError;
 
-        if (sessionsData) {
-          const memberMap = new Map(members.map(m => [m.id, m.name]));
+      if (sessionsData) {
+        const memberMap = new Map(members.map(m => [m.id, m.name]));
 
-          const fetchedEvents: CalendarEvent[] = [];
-          for (const session of sessionsData) {
-            const workoutSessionId = session.workout_session_id;
-            const start = session.start_time;
-            const end = session.end_time;
-            const status = session.status;
-            const type = session.type as "PT" | "상담" | "측정" | null;
-            const defaultColor = "#1d4ed8ff";
-            const completedColor = "#6b7280ff";
-            const cancelledColor = "#ef4444ff";
+        const fetchedEvents: CalendarEvent[] = [];
+        for (const session of sessionsData) {
+          const workoutSessionId = session.workout_session_id;
+          const start = session.start_time;
+          const end = session.end_time;
+          const status = session.status;
+          const type = session.type as "PT" | "상담" | "측정" | null;
+          
+          let bgColor = session.background_color || defaultColor;
 
-            let bgColor = session.background_color || defaultColor;
+          if (status === 'completed') {
+            bgColor = completedColor;
+          } else if (status === 'cancelled') {
+            bgColor = cancelledColor;
+          } else if (type === '상담') {
+            bgColor = consultationColor;
+          } else if (type === '측정') {
+            bgColor = measurementColor;
+          }
 
-            if (status === 'completed') {
-              bgColor = completedColor;
-            } else if (status === 'cancelled') {
-              bgColor = cancelledColor;
-            }
-
-            const darkenColor = (hexColor: string | null | undefined): string => {
-               if (!hexColor || !hexColor.startsWith('#') || hexColor.length < 7) return hexColor || defaultColor;
-               try {
-                 let r = parseInt(hexColor.substring(1, 3), 16);
-                 let g = parseInt(hexColor.substring(3, 5), 16);
-                 let b = parseInt(hexColor.substring(5, 7), 16);
-                 let a = hexColor.length === 9 ? hexColor.substring(7, 9) : 'ff';
-
-                 r = Math.max(0, r - 20);
-                 g = Math.max(0, g - 20);
-                 b = Math.max(0, b - 20);
-
-                 return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}${a}`;
-               } catch (e) {
-                 console.error("Error darkening color:", e);
-                 return hexColor;
-               }
-             };
-
-            const borderColor = darkenColor(bgColor);
+          const borderColor = darkenColor(bgColor);
 
             fetchedEvents.push({
                id: session.id,
@@ -229,12 +306,24 @@ const SchedulePage = () => {
     }
   }, [location.state, navigate, setEvents]);
 
-  const dailyCount = useMemo(() => {
+    const dailyCount = useMemo(() => {
       return events.filter(e => isSameDay(e.start, currentDate)).length;
     }, [events, currentDate]);
 
     const monthlyCount = useMemo(() => {
       return events.filter(e => isSameMonth(e.start, currentDate)).length;
+    }, [events, currentDate]);
+
+    const monthlyPtCount = useMemo(() => {
+      return events.filter(e => isSameMonth(e.start, currentDate) && e.type === 'PT').length;
+    }, [events, currentDate]);
+
+    const monthlyConsultationCount = useMemo(() => {
+      return events.filter(e => isSameMonth(e.start, currentDate) && e.type === '상담').length;
+    }, [events, currentDate]);
+
+    const monthlyMeasurementCount = useMemo(() => {
+      return events.filter(e => isSameMonth(e.start, currentDate) && e.type === '측정').length;
     }, [events, currentDate]);
 
     const noShowCount = useMemo(() => {
@@ -467,7 +556,7 @@ const SchedulePage = () => {
         selectedDate: event.start, // 날짜 정보 추가 (fetchWorkoutLog에서 덮어쓰지만, 만약을 위해)
       }
     });
-  }, [navigate, members, toast]); // members 의존성 추가
+  }, [navigate, members, toast]);
 
   const handleToggleNoShow = useCallback(async (event: CalendarEvent) => {
     const newStatus = event.status === 'cancelled' ? 'scheduled' : 'cancelled';
@@ -480,14 +569,40 @@ const SchedulePage = () => {
 
       if (error) throw error;
 
+      // Optimistically update the local state
+      setEvents(prevEvents => prevEvents.map(e => {
+        if (e.id === event.id) {
+          let updatedBgColor;
+          if (newStatus === 'cancelled') {
+            updatedBgColor = cancelledColor;
+          } else { // newStatus must be 'scheduled'
+            if (e.type === '상담') {
+              updatedBgColor = consultationColor;
+            } else if (e.type === '측정') {
+              updatedBgColor = measurementColor;
+            } else { // Default for PT or other types when scheduled
+              updatedBgColor = defaultColor;
+            }
+          }
+
+          return {
+            ...e,
+            status: newStatus,
+            backgroundColor: updatedBgColor,
+            borderColor: darkenColor(updatedBgColor),
+          };
+        }
+        return e;
+      }));
+
       toast({ title: "성공", description: `예약 상태를 ${newStatus === 'cancelled' ? '노쇼' : '예약됨'}으로 변경했습니다.` });
-      fetchEvents();
+      fetchEvents(); // Still call fetchEvents to ensure full sync with DB
     } catch (error: any) {
       console.error("Error updating session status:", error);
       toast({ title: "오류", description: `예약 상태 변경 중 오류 발생: ${error.message}`, variant: "destructive" });
       fetchEvents();
     }
-  }, [toast]);
+  }, [toast, setEvents, defaultColor, completedColor, cancelledColor, consultationColor, measurementColor, darkenColor, fetchEvents]);
 
 
   // 예약 삭제 핸들러 추가
@@ -593,37 +708,109 @@ const SchedulePage = () => {
                     mode="single"
                     selected={currentDate}
                     onSelect={(date) => {
-                      if (date) setCurrentDate(date);
+                      if (date) {
+                        setCurrentDate(date);
+                        setCurrentView('day'); // 날짜 선택 시 'day' 뷰로 전환
+                      }
                     }}
                     initialFocus
+                    locale={ko}
+                    components={{ DayContent: CustomDayContent }}
+                    formatters={{
+                      formatCaption: (date, options) => {
+                        return format(date, 'yyyy년 M월', { locale: options?.locale });
+                      }
+                    }}
+                    className="rounded-md border"
+                    classNames={{
+                      months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                      month: "space-y-4",
+                      caption: "flex justify-center pt-1 relative items-center",
+                      caption_label: "text-sm font-medium",
+                      nav: "space-x-1 flex items-center",
+                      nav_button: cn(
+                        "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+                      ),
+                      nav_button_previous: "absolute left-1",
+                      nav_button_next: "absolute right-1",
+                      table: "w-full border-collapse space-y-1",
+                      head_row: "flex justify-around",
+                      head_cell:
+                        "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] text-center",
+                      row: "flex w-full mt-2 justify-around",
+                      cell: cn(
+                        "h-14 w-14 text-center text-sm p-0 relative",
+                        "focus-within:relative focus-within:z-20",
+                        "flex items-center justify-center"
+                      ),
+                      day: cn(
+                        "h-full w-full p-0 font-normal",
+                        "flex flex-col items-center justify-start"
+                      ),
+                      day_selected: "!rounded-md bg-primary text-primary-foreground",
+                      day_today: "!rounded-md bg-blue-100 text-blue-700 font-bold", // 오늘 날짜(선택 안됨) 전체 셀 스타일
+                      day_outside: "text-muted-foreground opacity-50",
+                      day_disabled: "text-muted-foreground opacity-50",
+                      day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                      day_hidden: "invisible",
+                      button: "h-10 w-10 p-0",
+                    }}
                   />
                 </PopoverContent>
               </Popover>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4 p-4 pt-0">
+          <div className="grid grid-cols-3 gap-4 p-4 pt-0"> {/* 3열로 다시 변경 */}
             <Card>
               <CardHeader className="space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-center">일간</CardTitle>
+                <CardTitle className="text-xl font-medium text-center">일간</CardTitle> {/* 제목 크기 확대 */}
               </CardHeader>
               <CardContent className="text-center">
-                <div className="text-2xl font-bold">{dailyCount}</div>
+                <div className="text-3xl font-bold">{dailyCount}</div> {/* 숫자 크기 확대 */}
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-center">월간</CardTitle>
+                <CardTitle className="text-xl font-medium text-center">월간</CardTitle> {/* 제목 크기 확대 */}
               </CardHeader>
               <CardContent className="text-center">
-                <div className="text-2xl font-bold">{monthlyCount}</div>
+                <div className="text-3xl font-bold">{monthlyCount}</div> {/* 총계 크게 표시 */}
+                <div className="flex flex-row items-center justify-center space-x-2 mt-2 min-h-[26px] w-full flex-wrap"> {/* 달력 모달과 유사한 레이아웃 */}
+                  <div className="flex flex-col items-center">
+                    <span className="h-2 w-2 rounded-full bg-blue-600"></span>
+                    <span className="text-sm leading-none font-semibold mt-0.5">{monthlyPtCount}</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="h-2 w-2 rounded-full bg-yellow-500"></span>
+                    <span className="text-sm leading-none font-semibold mt-0.5">{monthlyConsultationCount}</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="h-2 w-2 rounded-full bg-orange-500"></span>
+                    <span className="text-sm leading-none font-semibold mt-0.5">{monthlyMeasurementCount}</span>
+                  </div>
+                  {/* PT 완료된 이벤트 개수 추가 (초록색 점) */}
+                  {events.filter(e => isSameMonth(e.start, currentDate) && e.type === 'PT' && e.status === 'completed').length > 0 && (
+                    <div className="flex flex-col items-center">
+                      <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                      <span className="text-sm leading-none font-semibold mt-0.5">{events.filter(e => isSameMonth(e.start, currentDate) && e.type === 'PT' && e.status === 'completed').length}</span>
+                    </div>
+                  )}
+                  {/* 노쇼 이벤트 개수 추가 (빨간색 점) */}
+                  {noShowCount > 0 && (
+                    <div className="flex flex-col items-center">
+                      <span className="h-2 w-2 rounded-full bg-red-500"></span>
+                      <span className="text-sm leading-none font-semibold mt-0.5">{noShowCount}</span>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-center">노쇼</CardTitle>
+                <CardTitle className="text-xl font-medium text-center">노쇼</CardTitle> {/* 제목 크기 확대 */}
               </CardHeader>
               <CardContent className="text-center">
-                <div className="text-2xl font-bold text-red-500">{noShowCount}</div> {/* text-red-500 클래스 추가 */}
+                <div className="text-3xl font-bold text-red-500">{noShowCount}</div> {/* 숫자 크기 확대 */}
               </CardContent>
             </Card>
           </div>
@@ -645,21 +832,8 @@ const SchedulePage = () => {
             onEventDrop={(eventId, newStart, newEnd, columnIndex) => {
               // 디버깅: 드롭 정보 출력
               console.log('[onEventDrop] eventId:', eventId, 'newStart:', newStart, 'newEnd:', newEnd, 'columnIndex:', columnIndex);
-              setEvents(prevEvents =>
-                prevEvents.map(event =>
-                  event.id === eventId
-                    ? {
-                        ...event,
-                        start: newStart.toISOString(),
-                        end: newEnd.toISOString(),
-                        layout: {
-                          ...event.layout,
-                          columnIndex: typeof columnIndex === 'number' ? columnIndex : undefined,
-                        },
-                      }
-                    : event
-                )
-              );
+              // setEvents 대신 fetchEvents를 호출하여 데이터베이스의 최신 상태를 반영
+              fetchEvents();
             }}
           />
         </div>
@@ -703,6 +877,5 @@ const SchedulePage = () => {
     </AppLayout>
   );
 };
- 
-export default SchedulePage;
 
+export default SchedulePage;
