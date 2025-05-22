@@ -587,7 +587,7 @@ const TimeGridView = (props: TimeGridViewProps): JSX.Element => {
 
       <div className={cn("flex-grow overflow-y-auto", viewType === 'week' ? "grid grid-cols-[minmax(3rem,auto)_repeat(7,1fr)]" : "flex")}> {/* Adjusted grid-cols for week main content, flex for day view */}
         {/* Time column */}
-        <div className={cn("w-12 shrink-0 border-r", "relative")}> {/* Consistent width and shrink-0 */}
+        <div className="w-12 shrink-0 border-r relative"> {/* Consistent width and shrink-0 */}
           {hours.map(hour => (
             <div
               key={`time-${hour}`}
